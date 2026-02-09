@@ -93,7 +93,7 @@ func TestAllocateAutoAssign(t *testing.T) {
 
 	var alloc model.Allocation
 	json.NewDecoder(w.Body).Decode(&alloc)
-	if alloc.Port < 3000 || alloc.Port > 9999 {
+	if alloc.Port < 1 || alloc.Port > 65535 {
 		t.Fatalf("auto-assigned port %d out of range", alloc.Port)
 	}
 }

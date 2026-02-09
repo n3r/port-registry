@@ -49,7 +49,7 @@ skill/embed.go            # go:embed package exposing SKILL.md and WORKFLOW.md a
 | Setting | Default |
 |---------|---------|
 | Server port | `51234` (listens on `127.0.0.1`) |
-| Port range | `3000–9999` |
+| Port range | `1–65535` |
 | DB path | `~/.port_server/ports.db` |
 | PID file | `~/.port_server/port-server.pid` |
 | Log file | `~/.port_server/port-server.log` |

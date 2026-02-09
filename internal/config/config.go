@@ -7,8 +7,8 @@ import (
 
 const (
 	DefaultServerPort = 51234
-	DefaultPortMin    = 3000
-	DefaultPortMax    = 9999
+	DefaultPortMin    = 1
+	DefaultPortMax    = 65535
 )
 
 func DefaultDBPath() string {

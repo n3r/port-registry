@@ -115,7 +115,7 @@ When setting up services that need ports:
 
 ## Port Range
 
-Ports are allocated from the range **3000-9999**. Do not request ports outside this range.
+Ports are allocated from the full range **1-65535**. Any valid port number can be requested.
 
 ## Reference
 

@@ -160,7 +160,7 @@ The requested port is taken. Options:
 
 ### "no ports available"
 
-The port range (3000-9999) is exhausted. Release unused allocations:
+The port range (1-65535) is exhausted. Release unused allocations:
 
 ```bash
 portctl list  # review all allocations
