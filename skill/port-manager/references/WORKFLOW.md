@@ -52,6 +52,34 @@ services:
 
 The host port (left side) comes from `portctl`. The container port (right side) is the service's default internal port.
 
+### Host-Bound vs Container-Only Ports
+
+When reading an existing `docker-compose.yml`, distinguish between port mapping styles:
+
+```yaml
+services:
+  # FIXED HOST BINDING — register these with portctl
+  postgres:
+    ports:
+      - "5432:5432"   # host 5432 -> container 5432: REGISTER 5432
+  proxy:
+    ports:
+      - "80:80"       # host 80 -> container 80: REGISTER 80
+  idp:
+    ports:
+      - "9100:8080"   # host 9100 -> container 8080: REGISTER 9100 (host port)
+
+  # CONTAINER-ONLY — do NOT register these
+  mailcatcher:
+    ports:
+      - "1025"         # random ephemeral host port -> container 1025: SKIP
+  swapper:
+    ports:
+      - "8080"         # random ephemeral host port -> container 8080: SKIP
+```
+
+**Rule**: only `"host:container"` format binds a fixed host port. A bare `"port"` lets Docker pick a random host port, so there is no conflict risk to track.
+
 ### Using .env Files
 
 For projects that use `.env` files with docker-compose:
@@ -95,6 +123,29 @@ portctl allocate --app myapp --instance feature-payments --service web
 # Each gets unique ports, no conflicts
 portctl list --app myapp
 ```
+
+## Registering Ports From an Existing Project
+
+When a user asks you to register ports for an existing project, scan all port sources:
+
+1. **docker-compose.yml / docker-compose.*.yml** — look for `ports:` with `"host:container"` format only
+2. **package.json / npm scripts** — look for `--port`, `-p`, or hardcoded ports in dev/start/test scripts
+3. **.env files** — look for `*_PORT` variables used by host-side services
+4. **Makefile / scripts/** — look for port bindings in dev tooling
+
+Register each host-bound port with `--port <N>`:
+
+```bash
+# Docker-exposed ports
+portctl allocate --app myapp --instance dev --service postgres --port 5432
+portctl allocate --app myapp --instance dev --service proxy-nginx --port 80
+
+# npm script ports
+portctl allocate --app myapp --instance dev --service storybook --port 6006
+portctl allocate --app myapp --instance dev --service nodejs-dev --port 3001
+```
+
+Do **not** register container-only ports (bare `"3001"` in docker-compose) unless the same port is also used by a host-side process like `npm run dev`.
 
 ## Cleanup Patterns
 

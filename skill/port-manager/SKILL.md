@@ -90,6 +90,30 @@ portctl release --id <N>                                 # release a single allo
 | `--instance` | Branch, environment, or variant | `dev`, `test`, `feature-auth`  |
 | `--service`  | Container or service name   | `postgres`, `redis`, `web`, `api` |
 
+## What to Register
+
+Only register ports that **actually bind on the host machine**. These are the ports that can conflict with other projects.
+
+### Docker Compose ports
+
+Read the `ports:` section carefully:
+
+- **`"5432:5432"`** (host:container) — fixed host binding, **register the host port** (left side)
+- **`"9100:8080"`** (host:container differ) — fixed host binding, **register 9100** (host port)
+- **`"3001"`** (container-only) — Docker assigns a random ephemeral host port, **do NOT register**
+
+### Non-Docker ports
+
+Also register ports from other sources that bind on the host:
+
+- **npm scripts** (`npm run dev` on port 3001, `npm run storybook` on port 6006)
+- **dev servers** started outside Docker
+- **Ports in .env files** used by services running on the host
+
+### Register all port numbers
+
+Any valid port (1-65535) can be registered — including well-known low ports like 80, 443, 1080, etc.
+
 ## Workflow
 
 When setting up services that need ports:
@@ -112,6 +136,12 @@ When setting up services that need ports:
    ```bash
    portctl release --app myapp --instance dev
    ```
+
+When registering ports from an existing project:
+
+1. **Scan all port sources**: docker-compose.yml, .env, package.json scripts, Makefile, etc.
+2. **Filter to host-bound ports only**: skip container-only Docker port mappings
+3. **Register with specific port**: use `--port <N>` for each known host port
 
 ## Port Range
 
