@@ -1,96 +1,56 @@
 # port-registry
 
-A local port registry that prevents port conflicts across Docker containers and dev services on your machine.
+[![CI](https://github.com/n3r/port-registry/actions/workflows/ci.yml/badge.svg)](https://github.com/n3r/port-registry/actions/workflows/ci.yml)
+[![Release](https://github.com/n3r/port-registry/actions/workflows/release.yml/badge.svg)](https://github.com/n3r/port-registry/actions/workflows/release.yml)
+[![Go](https://img.shields.io/github/go-mod/go-version/n3r/port-registry)](go.mod)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## Problem
+> A local port registry that eliminates port conflicts across your dev services.
 
-When you run multiple projects locally — each with their own Docker Compose stacks — port collisions are inevitable. Two projects both want port 5432 for Postgres, or 3000 for a web server. You discover the conflict only when `docker compose up` fails, then waste time grepping through YAML files to find a free port.
+<p align="center">
+  <img src="demo.gif" alt="port-registry demo" width="600">
+</p>
 
-**port-registry** solves this by maintaining a central registry of allocated ports. Services request a port (or ask for any available one), and the server guarantees no two services get the same port.
+## The problem
 
-## How it works
+When you run multiple projects locally — each with Docker Compose stacks — port collisions are inevitable. Two projects both want 5432 for Postgres, and you only find out when `docker compose up` fails. **port-registry** maintains a central registry so no two services get the same port.
 
-```
-┌──────────────┐         HTTP          ┌──────────────┐        ┌────────────┐
-│   portctl    │ ───────────────────── │ port-registry│ ────── │   SQLite   │
-│   (CLI)      │   localhost:51234     │  (HTTP API)  │        │   (WAL)    │
-└──────────────┘                       └──────────────┘        └────────────┘
+## Features
 
-• port-registry runs as a background daemon on 127.0.0.1
-• portctl is the CLI client — allocate, release, list, check ports
-• SQLite with WAL mode stores allocations durably
-• Auto-assign picks the first free port in 1–65535
-```
+- **Central registry** — no more grepping YAML files for free ports
+- **Auto-assign** — request any free port, or claim a specific one
+- **Conflict detection** — 409 with the current holder on collision
+- **Smart defaults** — auto-detects app from git repo, instance from branch/worktree
+- **AI agent integration** — built-in skill teaches Claude Code and Codex to use `portctl`
+- **Pure Go** — single binary, no CGO, SQLite with WAL mode
+- **REST API** — scriptable HTTP interface under `/v1/`
+- **Homebrew** — `brew install n3r/tap/port-registry`
 
-## Agent skill
-
-port-registry ships with an agent skill that teaches AI coding agents (Claude Code, OpenAI Codex, etc.) to use `portctl` automatically when managing ports. Instead of hardcoding ports, agents will allocate from the registry.
-
-### Install locally (recommended)
-
-Run from your project directory:
+## Quick start
 
 ```bash
-portctl skill install
+brew install n3r/tap/port-registry
+
+portctl start
+
+portctl allocate --service postgres
+# → allocated port 3000 for myapp/main/postgres
+
+portctl allocate --service web --port 8080
+# → allocated port 8080 for myapp/main/web
+
+portctl list
+# ID  APP    INSTANCE  SERVICE   PORT   CREATED
+# 1   myapp  main      postgres  3000   2025-02-08 15:04:05
+# 2   myapp  main      web       8080   2025-02-08 15:04:06
+
+portctl check --port 8080
+# → port 8080 is allocated to myapp/main/web
 ```
-
-This creates `.claude/skills/port-registry/` in the current directory. The skill is scoped to that project.
-
-### Install globally
-
-To make the skill available across all projects:
-
-```bash
-portctl skill install --global
-```
-
-This installs to all detected global platforms:
-
-| Platform | Directory |
-|----------|-----------|
-| Claude Code | `~/.claude/skills/port-registry/` |
-| OpenAI Codex | `~/.codex/skills/port-registry/` |
-| Generic Agents | `~/.agents/skills/port-registry/` |
-
-Platforms that don't exist on your system are skipped.
-
-### What the skill does
-
-Once installed, agents will automatically:
-
-- **Allocate ports** via `portctl` instead of picking arbitrary numbers
-- **Register existing ports** from docker-compose.yml, .env files, and npm scripts
-- **Only track host-bound ports** — distinguishes `"5432:5432"` (register) from bare `"3001"` (skip)
-- **Check for conflicts** before using any port
-- **Release ports** when tearing down services
-
-### Example prompts
-
-**New project** — setting up a Docker Compose stack from scratch:
-
-> Set up docker-compose for this project with Postgres, Redis, and a Node.js web server. Allocate ports through portctl.
-
-> Add a Minio S3 service to our docker-compose. Use portctl to get a port for it.
-
-> Create a docker-compose.yml for local development. I need Postgres, Elasticsearch, and a Rails API server.
-
-**Existing project** — registering ports that are already in use:
-
-> Scan this project's docker-compose.yml and register all host-bound ports with portctl.
-
-> Register all the ports used by this project — check docker-compose, .env files, and npm scripts.
-
-> I'm getting port conflicts with another project. Register all ports from this repo so other projects know what's taken.
-
-**Troubleshooting:**
-
-> Check which ports are allocated and whether any of them conflict with my other projects.
-
-> Port 5432 is already in use. Find out what's using it and allocate a different port for Postgres.
 
 ## Installation
 
-### Homebrew
+### Homebrew (recommended)
 
 ```bash
 brew install n3r/tap/port-registry
@@ -99,43 +59,104 @@ brew install n3r/tap/port-registry
 ### From source
 
 ```bash
+git clone https://github.com/n3r/port-registry.git
+cd port-registry
 make build    # produces bin/port-registry and bin/portctl
 ```
 
-## Quick start
+### Binary download
+
+Grab the latest release from [GitHub Releases](https://github.com/n3r/port-registry/releases).
+
+## Usage
+
+### Allocating ports
 
 ```bash
-# Build both binaries (skip if installed via Homebrew)
-make build
+# Auto-assign a port
+portctl allocate --service postgres
 
-# Start the server
-./bin/portctl start
-# → port-registry started (pid 12345)
+# Claim a specific port
+portctl allocate --service web --port 8080
 
-# Allocate a port for your service (--app and --instance auto-detected)
-./bin/portctl allocate --service postgres
-# → allocated port 3000 (id=1) for myapp/main/postgres
-
-# Allocate a specific port
-./bin/portctl allocate --service web --port 8080
-# → allocated port 8080 (id=2) for myapp/main/web
-
-# List everything
-./bin/portctl list
-# ID  APP    INSTANCE  SERVICE   PORT  CREATED
-# 1   myapp  main      postgres  3000  2025-02-08 15:04:05
-# 2   myapp  main      web       8080  2025-02-08 15:04:06
-
-# Check if a port is free
-./bin/portctl check --port 3000
-# → port 3000 is allocated to myapp/dev/postgres (id=1)
-
-# Release when done
-./bin/portctl release --id 1
-# → released allocation 1
+# Specify app and instance explicitly
+portctl allocate --app myapi --instance feature-x --service redis --port 6379
 ```
 
-## CLI reference
+### Auto-detection
+
+`--app` defaults to the git repo name (or current folder). `--instance` defaults to the git worktree or branch name. In most cases you only need `--service`:
+
+```bash
+portctl allocate --service postgres
+# → allocated port 4521 for my-project/feature-branch/postgres
+```
+
+### Checking & releasing
+
+```bash
+# Check if a port is available
+portctl check --port 5432
+
+# Release by ID
+portctl release --id 1
+
+# Release by filter
+portctl release --service postgres
+```
+
+### JSON output for scripting
+
+```bash
+portctl list --json
+portctl list --json | jq '.[].port'
+```
+
+## AI agent integration
+
+port-registry ships with an agent skill that teaches AI coding agents (Claude Code, OpenAI Codex) to use `portctl` automatically. Instead of hardcoding ports, agents allocate from the registry.
+
+### Install the skill
+
+```bash
+# Project-local (recommended)
+portctl skill install
+
+# Global — all projects, all platforms
+portctl skill install --global
+```
+
+### Supported platforms
+
+| Platform | Directory |
+|----------|-----------|
+| Claude Code | `~/.claude/skills/port-registry/` |
+| OpenAI Codex | `~/.codex/skills/port-registry/` |
+| Generic Agents | `~/.agents/skills/port-registry/` |
+
+### Example prompts
+
+> Set up docker-compose for this project with Postgres, Redis, and a Node.js web server. Allocate ports through portctl.
+
+> Scan this project's docker-compose.yml and register all host-bound ports with portctl.
+
+> Port 5432 is already in use. Find out what's using it and allocate a different port for Postgres.
+
+> Check which ports are allocated and whether any conflict with my other projects.
+
+## Configuration
+
+| Setting | Flag / Env | Default | Description |
+|---------|-----------|---------|-------------|
+| Server port | `--port` | `51234` | Port the HTTP server listens on |
+| Database path | `--db` | `~/.port-registry/ports.db` | SQLite database file location |
+| PID file | `--pidfile` | `~/.port-registry/port-registry.pid` | PID file for the server process |
+| Log file | — | `~/.port-registry/port-registry.log` | Server log output (when started via `portctl start`) |
+| Server address (client) | `PORT_REGISTRY_ADDR` | `127.0.0.1:51234` | Address `portctl` connects to |
+| Auto-assign range | — | `1–65535` | Port range for auto-assignment |
+
+<details>
+<summary><strong>CLI reference</strong></summary>
 
 The CLI binary is `portctl`. Set `PORT_REGISTRY_ADDR` to override the default server address (`127.0.0.1:51234`).
 
@@ -289,7 +310,10 @@ By default, installs to `.claude/skills/port-registry/` in the current directory
 
 **Exit codes:** `0` always
 
-## API reference
+</details>
+
+<details>
+<summary><strong>API reference</strong></summary>
 
 Base URL: `http://127.0.0.1:51234`
 
@@ -440,18 +464,10 @@ At least one filter field is required.
 {"deleted": 2}
 ```
 
-## Configuration
+</details>
 
-| Setting | Flag / Env | Default | Description |
-|---------|-----------|---------|-------------|
-| Server port | `--port` | `51234` | Port the HTTP server listens on |
-| Database path | `--db` | `~/.port-registry/ports.db` | SQLite database file location |
-| PID file | `--pidfile` | `~/.port-registry/port-registry.pid` | PID file for the server process |
-| Log file | — | `~/.port-registry/port-registry.log` | Server log output (when started via `portctl start`) |
-| Server address (client) | `PORT_REGISTRY_ADDR` | `127.0.0.1:51234` | Address `portctl` connects to |
-| Auto-assign range | — | `1–65535` | Port range for auto-assignment |
-
-## Project structure
+<details>
+<summary><strong>Project structure</strong></summary>
 
 ```
 port-registry/
@@ -497,12 +513,15 @@ port-registry/
 └── go.sum
 ```
 
+</details>
+
 ## Development
 
 ```bash
-make build    # Build bin/port-registry and bin/portctl
-make test     # Run all tests (go test ./...)
-make clean    # Remove bin/
+make build         # Build bin/port-registry and bin/portctl
+make test          # Run all tests (go test ./...)
+go test -race ./...  # Race detector
+make clean         # Remove bin/
 ```
 
 Tests use in-memory SQLite — no external dependencies needed.
