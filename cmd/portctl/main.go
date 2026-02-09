@@ -16,6 +16,7 @@ import (
 	"github.com/nfedorov/port_server/internal/client"
 	"github.com/nfedorov/port_server/internal/config"
 	"github.com/nfedorov/port_server/internal/model"
+	"github.com/nfedorov/port_server/internal/skill"
 	"github.com/nfedorov/port_server/internal/store"
 	"github.com/nfedorov/port_server/internal/ui"
 	"github.com/nfedorov/port_server/internal/version"
@@ -43,6 +44,9 @@ func main() {
 		return
 	case "status":
 		cmdStatus()
+		return
+	case "skill":
+		cmdSkill(os.Args[2:])
 		return
 	}
 
@@ -86,6 +90,9 @@ func usage() {
 	fmt.Fprintln(os.Stderr, ui.UsageCommand("check", "Check if a port is available"))
 	fmt.Fprintln(os.Stderr, ui.UsageCommand("health", "Check server health"))
 	fmt.Fprintln(os.Stderr, ui.UsageCommand("version", "Print version and exit"))
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, ui.UsageHeader("Skills:"))
+	fmt.Fprintln(os.Stderr, ui.UsageCommand("skill", "Manage agent skills"))
 }
 
 func cmdAllocate(c *client.Client, args []string) {
@@ -407,4 +414,56 @@ func readPID() (int, bool) {
 func isProcessAlive(pid int) bool {
 	err := syscall.Kill(pid, 0)
 	return err == nil
+}
+
+func cmdSkill(args []string) {
+	if len(args) == 0 {
+		skillUsage()
+		os.Exit(1)
+	}
+	switch args[0] {
+	case "install":
+		cmdSkillInstall(args[1:])
+	default:
+		fmt.Fprintln(os.Stderr, ui.Errorf("unknown skill command: %s", args[0]))
+		skillUsage()
+		os.Exit(1)
+	}
+}
+
+func cmdSkillInstall(args []string) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, ui.Errorf("cannot determine home directory: %v", err))
+		os.Exit(1)
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, ui.Errorf("cannot determine working directory: %v", err))
+		os.Exit(1)
+	}
+
+	result := skill.Install(home, cwd)
+
+	for _, p := range result.Installed {
+		fmt.Println(ui.Successf("Installed to %s %s", p.Name, ui.Subtle(p.Dir)))
+	}
+	for _, p := range result.Skipped {
+		fmt.Println(ui.Infof("Skipped %s %s", p.Name, ui.Subtle("(not detected)")))
+	}
+	for _, e := range result.Errors {
+		fmt.Fprintln(os.Stderr, ui.Errorf("Failed to install to %s: %v", e.Platform.Name, e.Err))
+	}
+
+	if len(result.Installed) == 0 && len(result.Errors) == 0 {
+		fmt.Println(ui.Warning("No agent platforms detected"))
+		fmt.Println(ui.Infof("Create ~/.claude, ~/.codex, or ~/.agents to enable a platform"))
+	}
+}
+
+func skillUsage() {
+	fmt.Fprintln(os.Stderr, ui.UsageTitle("Usage: portctl skill <command>"))
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, ui.UsageHeader("Commands:"))
+	fmt.Fprintln(os.Stderr, ui.UsageCommand("install", "Install agent skill to detected platforms"))
 }
