@@ -60,6 +60,7 @@ skill/embed.go            # go:embed package exposing SKILL.md and WORKFLOW.md a
 The `skill/port-manager/` directory contains an agent skill that teaches AI agents to use `portctl` automatically when managing ports. Install with:
 
 ```bash
-portctl skill install   # auto-detects platforms (~/.claude, ~/.codex, ~/.agents) and project-local .claude/
-make install-skill      # alternative: hard-copy to ~/.claude/skills/ and ~/.agents/skills/
+portctl skill install            # installs to project-local .claude/
+portctl skill install --global   # installs to global platforms (~/.claude, ~/.codex, ~/.agents)
+make install-skill               # alternative: hard-copy to ~/.claude/skills/ and ~/.agents/skills/
 ```

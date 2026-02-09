@@ -436,6 +436,10 @@ func cmdSkill(args []string) {
 }
 
 func cmdSkillInstall(args []string) {
+	fs := flag.NewFlagSet("skill install", flag.ExitOnError)
+	global := fs.Bool("global", false, "install to global platforms (~/.claude, ~/.codex, ~/.agents)")
+	fs.Parse(args)
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, ui.Errorf("cannot determine home directory: %v", err))
@@ -447,7 +451,7 @@ func cmdSkillInstall(args []string) {
 		os.Exit(1)
 	}
 
-	result := skill.Install(home, cwd)
+	result := skill.Install(home, cwd, *global)
 
 	for _, p := range result.Installed {
 		fmt.Println(ui.Successf("Installed to %s %s", p.Name, ui.Subtle(p.Dir)))
@@ -460,8 +464,12 @@ func cmdSkillInstall(args []string) {
 	}
 
 	if len(result.Installed) == 0 && len(result.Errors) == 0 {
-		fmt.Println(ui.Warning("No agent platforms detected"))
-		fmt.Println(ui.Infof("Create ~/.claude, ~/.codex, or ~/.agents to enable a platform"))
+		if *global {
+			fmt.Println(ui.Warning("No agent platforms detected"))
+			fmt.Println(ui.Infof("Create ~/.claude, ~/.codex, or ~/.agents to enable a platform"))
+		} else {
+			fmt.Println(ui.Warning("No project directory available"))
+		}
 	}
 }
 
@@ -469,5 +477,5 @@ func skillUsage() {
 	fmt.Fprintln(os.Stderr, ui.UsageTitle("Usage: portctl skill <command>"))
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, ui.UsageHeader("Commands:"))
-	fmt.Fprintln(os.Stderr, ui.UsageCommand("install", "Install agent skill to detected platforms"))
+	fmt.Fprintln(os.Stderr, ui.UsageCommand("install", "Install agent skill locally (use --global for global platforms)"))
 }

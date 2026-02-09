@@ -26,34 +26,45 @@ type InstallResult struct {
 	Errors    []InstallError
 }
 
-// Install detects agent platforms and writes skill files to each.
-// homeDir is the user's home directory; cwd is the current working directory.
-func Install(homeDir, cwd string) InstallResult {
+// Install writes skill files to the appropriate platforms.
+// When global is true, it installs to global platforms (~/.claude, ~/.codex, ~/.agents).
+// When global is false, it installs to the project-local .claude/ in cwd (creating it if needed).
+func Install(homeDir, cwd string, global bool) InstallResult {
 	var result InstallResult
 
-	// Global platforms: install if the parent directory exists.
-	globals := []Platform{
-		{Name: "Claude Code", Dir: filepath.Join(homeDir, ".claude")},
-		{Name: "OpenAI Codex", Dir: filepath.Join(homeDir, ".codex")},
-		{Name: "Generic Agents", Dir: filepath.Join(homeDir, ".agents")},
-	}
-
-	for _, p := range globals {
-		installPlatform(p, &result)
-	}
-
-	// Project-level: .claude/ in cwd (only if it already exists).
-	if cwd != "" {
-		projectDir := filepath.Join(cwd, ".claude")
-		if info, err := os.Stat(projectDir); err == nil && info.IsDir() {
-			p := Platform{Name: "Claude Code (project)", Dir: projectDir}
+	if global {
+		globals := []Platform{
+			{Name: "Claude Code", Dir: filepath.Join(homeDir, ".claude")},
+			{Name: "OpenAI Codex", Dir: filepath.Join(homeDir, ".codex")},
+			{Name: "Generic Agents", Dir: filepath.Join(homeDir, ".agents")},
+		}
+		for _, p := range globals {
 			installPlatform(p, &result)
 		}
+		return result
+	}
+
+	// Local install: .claude/ in cwd (create if needed).
+	if cwd != "" {
+		projectDir := filepath.Join(cwd, ".claude")
+		p := Platform{Name: "Claude Code (project)", Dir: projectDir}
+		installPlatformCreate(p, &result)
 	}
 
 	return result
 }
 
+// installPlatformCreate creates the platform directory if needed, then writes skill files.
+func installPlatformCreate(p Platform, result *InstallResult) {
+	destDir := filepath.Join(p.Dir, "skills", "port-manager", "references")
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		result.Errors = append(result.Errors, InstallError{Platform: p, Err: err})
+		return
+	}
+	writeSkillFiles(p, destDir, result)
+}
+
+// installPlatform writes skill files only if the platform directory already exists.
 func installPlatform(p Platform, result *InstallResult) {
 	info, err := os.Stat(p.Dir)
 	if err != nil || !info.IsDir() {
@@ -66,7 +77,10 @@ func installPlatform(p Platform, result *InstallResult) {
 		result.Errors = append(result.Errors, InstallError{Platform: p, Err: err})
 		return
 	}
+	writeSkillFiles(p, destDir, result)
+}
 
+func writeSkillFiles(p Platform, destDir string, result *InstallResult) {
 	skillPath := filepath.Join(p.Dir, "skills", "port-manager", "SKILL.md")
 	if err := os.WriteFile(skillPath, skilldata.SkillMD, 0644); err != nil {
 		result.Errors = append(result.Errors, InstallError{Platform: p, Err: err})

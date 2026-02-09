@@ -8,14 +8,14 @@ import (
 	skilldata "github.com/nfedorov/port_server/skill"
 )
 
-func TestInstallDetectsAndWritesToPlatforms(t *testing.T) {
+func TestInstallGlobalDetectsAndWritesToPlatforms(t *testing.T) {
 	home := t.TempDir()
 
 	// Create .claude and .agents directories; skip .codex.
 	os.Mkdir(filepath.Join(home, ".claude"), 0755)
 	os.Mkdir(filepath.Join(home, ".agents"), 0755)
 
-	result := Install(home, "")
+	result := Install(home, "", true)
 
 	if len(result.Installed) != 2 {
 		t.Fatalf("expected 2 installed, got %d", len(result.Installed))
@@ -57,48 +57,40 @@ func TestInstallDetectsAndWritesToPlatforms(t *testing.T) {
 	}
 }
 
-func TestInstallProjectLocal(t *testing.T) {
+func TestInstallLocalDefault(t *testing.T) {
 	home := t.TempDir()
 	cwd := t.TempDir()
 
-	// Create .claude in both home and cwd.
-	os.Mkdir(filepath.Join(home, ".claude"), 0755)
-	os.Mkdir(filepath.Join(cwd, ".claude"), 0755)
+	// Default install (local) should create .claude/ in cwd even if it doesn't exist.
+	result := Install(home, cwd, false)
 
-	result := Install(home, cwd)
-
-	if len(result.Installed) != 2 {
-		t.Fatalf("expected 2 installed (global + project), got %d", len(result.Installed))
-	}
-
-	// Verify global install.
-	if _, err := os.Stat(filepath.Join(home, ".claude", "skills", "port-manager", "SKILL.md")); err != nil {
-		t.Error("global SKILL.md not found")
+	if len(result.Installed) != 1 {
+		t.Fatalf("expected 1 installed (project), got %d", len(result.Installed))
 	}
 
 	// Verify project-level install.
 	if _, err := os.Stat(filepath.Join(cwd, ".claude", "skills", "port-manager", "SKILL.md")); err != nil {
 		t.Error("project-level SKILL.md not found")
 	}
-
-	// Check that the project-level platform has the right name.
-	found := false
-	for _, p := range result.Installed {
-		if p.Name == "Claude Code (project)" {
-			found = true
-			break
-		}
+	if _, err := os.Stat(filepath.Join(cwd, ".claude", "skills", "port-manager", "references", "WORKFLOW.md")); err != nil {
+		t.Error("project-level WORKFLOW.md not found")
 	}
-	if !found {
-		t.Error("expected a 'Claude Code (project)' platform in installed list")
+
+	// Should NOT install globally.
+	if _, err := os.Stat(filepath.Join(home, ".claude", "skills")); err == nil {
+		t.Error("global install should not happen in local mode")
+	}
+
+	// Check that the platform has the right name.
+	if result.Installed[0].Name != "Claude Code (project)" {
+		t.Errorf("expected 'Claude Code (project)', got %s", result.Installed[0].Name)
 	}
 }
 
-func TestInstallNoPlatforms(t *testing.T) {
+func TestInstallGlobalNoPlatforms(t *testing.T) {
 	home := t.TempDir()
-	cwd := t.TempDir()
 
-	result := Install(home, cwd)
+	result := Install(home, "", true)
 
 	if len(result.Installed) != 0 {
 		t.Fatalf("expected 0 installed, got %d", len(result.Installed))
