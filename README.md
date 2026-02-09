@@ -112,12 +112,12 @@ make build
 ./bin/portctl start
 # → port-server started (pid 12345)
 
-# Allocate a port for your service
-./bin/portctl allocate --app myapp --instance dev --service postgres
+# Allocate a port for your service (--app defaults to repo/folder name)
+./bin/portctl allocate --instance dev --service postgres
 # → allocated port 3000 (id=1) for myapp/dev/postgres
 
 # Allocate a specific port
-./bin/portctl allocate --app myapp --instance dev --service web --port 8080
+./bin/portctl allocate --instance dev --service web --port 8080
 # → allocated port 8080 (id=2) for myapp/dev/web
 
 # List everything
@@ -190,12 +190,12 @@ Reports the PID and health status. Cleans up stale PID files automatically.
 Allocate a port for a service.
 
 ```
-portctl allocate --app <name> --instance <name> --service <name> [--port <number>]
+portctl allocate [--app <name>] --instance <name> --service <name> [--port <number>]
 ```
 
 | Flag | Required | Default | Description |
 |------|----------|---------|-------------|
-| `--app` | yes | | Application name |
+| `--app` | no | git repo or folder name | Application name |
 | `--instance` | yes | | Instance name |
 | `--service` | yes | | Service name |
 | `--port` | no | 0 (auto) | Specific port to allocate; 0 = auto-assign from 1–65535 |
@@ -208,18 +208,18 @@ Release one or more port allocations.
 
 ```
 portctl release --id <number>
-portctl release --app <name> [--instance <name>] [--service <name>] [--port <number>]
+portctl release [--app <name>] [--instance <name>] [--service <name>] [--port <number>]
 ```
 
 | Flag | Required | Default | Description |
 |------|----------|---------|-------------|
 | `--id` | no | 0 | Release a specific allocation by ID |
-| `--app` | no | | Filter by application name |
+| `--app` | no | git repo or folder name | Filter by application name |
 | `--instance` | no | | Filter by instance name |
 | `--service` | no | | Filter by service name |
 | `--port` | no | 0 | Filter by port number |
 
-When `--id` is not provided, at least `--app` or `--port` is required. Filters are AND-ed together.
+When `--id` is not provided, at least `--app` or `--port` is required (--app is auto-detected if not specified). Filters are AND-ed together.
 
 **Exit codes:** `0` success, `1` error (not found, validation failure)
 
@@ -233,7 +233,7 @@ portctl list [--app <name>] [--instance <name>] [--service <name>] [--json]
 
 | Flag | Required | Default | Description |
 |------|----------|---------|-------------|
-| `--app` | no | | Filter by application |
+| `--app` | no | git repo or folder name | Filter by application |
 | `--instance` | no | | Filter by instance |
 | `--service` | no | | Filter by service |
 | `--json` | no | false | Output as JSON instead of table |

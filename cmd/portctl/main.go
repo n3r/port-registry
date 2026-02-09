@@ -95,14 +95,29 @@ func usage() {
 	fmt.Fprintln(os.Stderr, ui.UsageCommand("skill", "Manage agent skills"))
 }
 
+func detectAppName() string {
+	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if err == nil {
+		return filepath.Base(strings.TrimSpace(string(out)))
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return filepath.Base(cwd)
+}
+
 func cmdAllocate(c *client.Client, args []string) {
 	fs := flag.NewFlagSet("allocate", flag.ExitOnError)
-	app := fs.String("app", "", "application name (required)")
+	app := fs.String("app", "", "application name (default: repo or folder name)")
 	instance := fs.String("instance", "", "instance name (required)")
 	service := fs.String("service", "", "service name (required)")
 	port := fs.Int("port", 0, "specific port to allocate (0 = auto-assign)")
 	fs.Parse(args)
 
+	if *app == "" {
+		*app = detectAppName()
+	}
 	if *app == "" || *instance == "" || *service == "" {
 		fmt.Fprintln(os.Stderr, ui.Error("--app, --instance, and --service are required"))
 		fs.Usage()
@@ -141,11 +156,15 @@ func cmdAllocate(c *client.Client, args []string) {
 func cmdRelease(c *client.Client, args []string) {
 	fs := flag.NewFlagSet("release", flag.ExitOnError)
 	id := fs.Int64("id", 0, "allocation ID to release")
-	app := fs.String("app", "", "application name")
+	app := fs.String("app", "", "application name (default: repo or folder name)")
 	instance := fs.String("instance", "", "instance name")
 	service := fs.String("service", "", "service name")
 	port := fs.Int("port", 0, "port to release")
 	fs.Parse(args)
+
+	if *app == "" {
+		*app = detectAppName()
+	}
 
 	if *id != 0 {
 		if err := c.ReleaseByID(*id); err == store.ErrNotFound {
@@ -180,11 +199,15 @@ func cmdRelease(c *client.Client, args []string) {
 
 func cmdList(c *client.Client, args []string) {
 	fs := flag.NewFlagSet("list", flag.ExitOnError)
-	app := fs.String("app", "", "filter by application")
+	app := fs.String("app", "", "filter by application (default: repo or folder name)")
 	instance := fs.String("instance", "", "filter by instance")
 	service := fs.String("service", "", "filter by service")
 	jsonOut := fs.Bool("json", false, "output as JSON")
 	fs.Parse(args)
+
+	if *app == "" {
+		*app = detectAppName()
+	}
 
 	allocs, err := c.List(store.Filter{
 		App:      *app,
