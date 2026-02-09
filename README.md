@@ -64,6 +64,30 @@ Once installed, agents will automatically:
 - **Check for conflicts** before using any port
 - **Release ports** when tearing down services
 
+### Example prompts
+
+**New project** — setting up a Docker Compose stack from scratch:
+
+> Set up docker-compose for this project with Postgres, Redis, and a Node.js web server. Allocate ports through portctl.
+
+> Add a Minio S3 service to our docker-compose. Use portctl to get a port for it.
+
+> Create a docker-compose.yml for local development. I need Postgres, Elasticsearch, and a Rails API server.
+
+**Existing project** — registering ports that are already in use:
+
+> Scan this project's docker-compose.yml and register all host-bound ports with portctl.
+
+> Register all the ports used by this project — check docker-compose, .env files, and npm scripts.
+
+> I'm getting port conflicts with another project. Register all ports from this repo so other projects know what's taken.
+
+**Troubleshooting:**
+
+> Check which ports are allocated and whether any of them conflict with my other projects.
+
+> Port 5432 is already in use. Find out what's using it and allocate a different port for Postgres.
+
 ## Installation
 
 ### Homebrew
