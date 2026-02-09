@@ -125,6 +125,37 @@ func TestAllocateConflict(t *testing.T) {
 	}
 }
 
+func TestAllocateDuplicateService(t *testing.T) {
+	srv := setup(t)
+
+	body, _ := json.Marshal(model.AllocateRequest{App: "a", Instance: "i", Service: "s"})
+	req := httptest.NewRequest("POST", "/v1/allocations", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != 201 {
+		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+
+	body, _ = json.Marshal(model.AllocateRequest{App: "a", Instance: "i", Service: "s"})
+	req = httptest.NewRequest("POST", "/v1/allocations", bytes.NewReader(body))
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != 409 {
+		t.Fatalf("expected 409, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var errResp model.ErrorResponse
+	json.NewDecoder(w.Body).Decode(&errResp)
+	if errResp.Error != "service already allocated" {
+		t.Fatalf("expected 'service already allocated' error, got %q", errResp.Error)
+	}
+	if errResp.Holder == nil {
+		t.Fatal("expected holder info in conflict response")
+	}
+}
+
 func TestAllocateValidation(t *testing.T) {
 	srv := setup(t)
 

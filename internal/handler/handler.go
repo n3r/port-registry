@@ -54,6 +54,13 @@ func (h *Handler) Allocate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	alloc, err := h.store.Allocate(req, h.portMin, h.portMax)
+	if err == store.ErrServiceAllocated {
+		writeJSON(w, http.StatusConflict, model.ErrorResponse{
+			Error:  "service already allocated",
+			Holder: alloc,
+		})
+		return
+	}
 	if err == store.ErrPortTaken {
 		writeJSON(w, http.StatusConflict, model.ErrorResponse{
 			Error:  "port already allocated",

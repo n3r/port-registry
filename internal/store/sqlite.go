@@ -41,10 +41,16 @@ func migrate(db *sql.DB) error {
 			service     TEXT    NOT NULL,
 			port        INTEGER NOT NULL UNIQUE,
 			created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-			UNIQUE(app, instance, service, port)
+			UNIQUE(app, instance, service)
 		)
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+	// Migration for existing databases: add the uniqueness constraint on (app, instance, service).
+	// Fails silently if the index already exists or if the table was just created with UNIQUE above.
+	db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_alloc_app_instance_service ON allocations(app, instance, service)`)
+	return nil
 }
 
 func (s *SQLiteStore) Allocate(req model.AllocateRequest, portMin, portMax int) (*model.Allocation, error) {
@@ -64,6 +70,10 @@ func (s *SQLiteStore) Allocate(req model.AllocateRequest, portMin, portMax int) 
 		req.App, req.Instance, req.Service, port, now.Format(time.DateTime),
 	)
 	if err != nil {
+		// Check if the service triple already exists.
+		if existing := s.getByService(req.App, req.Instance, req.Service); existing != nil {
+			return existing, ErrServiceAllocated
+		}
 		// Check if port is taken by trying to look it up.
 		existing, lookupErr := s.GetByPort(port)
 		if lookupErr == nil && existing != nil {
@@ -81,6 +91,20 @@ func (s *SQLiteStore) Allocate(req model.AllocateRequest, portMin, portMax int) 
 		Port:      port,
 		CreatedAt: now,
 	}, nil
+}
+
+func (s *SQLiteStore) getByService(app, instance, service string) *model.Allocation {
+	var a model.Allocation
+	var createdAt string
+	err := s.db.QueryRow(
+		`SELECT id, app, instance, service, port, created_at FROM allocations WHERE app = ? AND instance = ? AND service = ?`,
+		app, instance, service,
+	).Scan(&a.ID, &a.App, &a.Instance, &a.Service, &a.Port, &createdAt)
+	if err != nil {
+		return nil
+	}
+	a.CreatedAt, _ = time.Parse(time.DateTime, createdAt)
+	return &a
 }
 
 func (s *SQLiteStore) findFreePort(portMin, portMax int) (int, error) {

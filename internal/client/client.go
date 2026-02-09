@@ -47,6 +47,9 @@ func (c *Client) Allocate(req model.AllocateRequest) (*model.Allocation, error) 
 	if resp.StatusCode == http.StatusConflict {
 		var errResp model.ErrorResponse
 		json.NewDecoder(resp.Body).Decode(&errResp)
+		if errResp.Error == "service already allocated" {
+			return errResp.Holder, store.ErrServiceAllocated
+		}
 		return errResp.Holder, store.ErrPortTaken
 	}
 

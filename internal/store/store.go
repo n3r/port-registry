@@ -7,8 +7,9 @@ import (
 )
 
 var (
-	ErrPortTaken = errors.New("port already allocated")
-	ErrNotFound  = errors.New("allocation not found")
+	ErrPortTaken        = errors.New("port already allocated")
+	ErrServiceAllocated = errors.New("service already allocated")
+	ErrNotFound         = errors.New("allocation not found")
 )
 
 type Filter struct {

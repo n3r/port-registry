@@ -74,6 +74,11 @@ func cmdAllocate(c *client.Client, args []string) {
 		Service:  *service,
 		Port:     *port,
 	})
+	if err == store.ErrServiceAllocated {
+		fmt.Fprintf(os.Stderr, "error: %s/%s/%s is already allocated on port %d (id=%d)\n",
+			alloc.App, alloc.Instance, alloc.Service, alloc.Port, alloc.ID)
+		os.Exit(1)
+	}
 	if err == store.ErrPortTaken {
 		fmt.Fprintf(os.Stderr, "error: port %d is already allocated to %s/%s/%s (id=%d)\n",
 			alloc.Port, alloc.App, alloc.Instance, alloc.Service, alloc.ID)

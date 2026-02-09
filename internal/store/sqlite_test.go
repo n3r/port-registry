@@ -75,6 +75,27 @@ func TestAllocateDuplicatePort(t *testing.T) {
 	}
 }
 
+func TestAllocateDuplicateService(t *testing.T) {
+	s := newTestStore(t)
+
+	_, err := s.Allocate(model.AllocateRequest{
+		App: "a", Instance: "i", Service: "s",
+	}, 3000, 9999)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	holder, err := s.Allocate(model.AllocateRequest{
+		App: "a", Instance: "i", Service: "s",
+	}, 3000, 9999)
+	if err != ErrServiceAllocated {
+		t.Fatalf("expected ErrServiceAllocated, got %v", err)
+	}
+	if holder == nil || holder.App != "a" {
+		t.Fatal("expected holder info on service conflict")
+	}
+}
+
 func TestList(t *testing.T) {
 	s := newTestStore(t)
 
