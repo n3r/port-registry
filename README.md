@@ -19,8 +19,50 @@ When you run multiple projects locally — each with their own Docker Compose st
 • port-server runs as a background daemon on 127.0.0.1
 • portctl is the CLI client — allocate, release, list, check ports
 • SQLite with WAL mode stores allocations durably
-• Auto-assign picks the first free port in 3000–9999
+• Auto-assign picks the first free port in 1–65535
 ```
+
+## Agent skill
+
+port-server ships with an agent skill that teaches AI coding agents (Claude Code, OpenAI Codex, etc.) to use `portctl` automatically when managing ports. Instead of hardcoding ports, agents will allocate from the registry.
+
+### Install locally (recommended)
+
+Run from your project directory:
+
+```bash
+portctl skill install
+```
+
+This creates `.claude/skills/port-manager/` in the current directory. The skill is scoped to that project.
+
+### Install globally
+
+To make the skill available across all projects:
+
+```bash
+portctl skill install --global
+```
+
+This installs to all detected global platforms:
+
+| Platform | Directory |
+|----------|-----------|
+| Claude Code | `~/.claude/skills/port-manager/` |
+| OpenAI Codex | `~/.codex/skills/port-manager/` |
+| Generic Agents | `~/.agents/skills/port-manager/` |
+
+Platforms that don't exist on your system are skipped.
+
+### What the skill does
+
+Once installed, agents will automatically:
+
+- **Allocate ports** via `portctl` instead of picking arbitrary numbers
+- **Register existing ports** from docker-compose.yml, .env files, and npm scripts
+- **Only track host-bound ports** — distinguishes `"5432:5432"` (register) from bare `"3001"` (skip)
+- **Check for conflicts** before using any port
+- **Release ports** when tearing down services
 
 ## Installation
 
@@ -132,7 +174,7 @@ portctl allocate --app <name> --instance <name> --service <name> [--port <number
 | `--app` | yes | | Application name |
 | `--instance` | yes | | Instance name |
 | `--service` | yes | | Service name |
-| `--port` | no | 0 (auto) | Specific port to allocate; 0 = auto-assign from 3000–9999 |
+| `--port` | no | 0 (auto) | Specific port to allocate; 0 = auto-assign from 1–65535 |
 
 **Exit codes:** `0` success, `1` error (port taken, validation failure, server unreachable)
 
@@ -208,13 +250,18 @@ portctl version
 
 ### `portctl skill install`
 
-Install the port-manager agent skill to detected agent platforms.
+Install the port-manager agent skill.
 
 ```
-portctl skill install
+portctl skill install            # install to project-local .claude/
+portctl skill install --global   # install to global platforms (~/.claude, ~/.codex, ~/.agents)
 ```
 
-Auto-detects `~/.claude` (Claude Code), `~/.codex` (OpenAI Codex), `~/.agents` (generic agents), and project-local `.claude/` directories. Skill files are embedded in the binary — no source tree needed.
+| Flag | Required | Default | Description |
+|------|----------|---------|-------------|
+| `--global` | no | false | Install to global platforms instead of project-local |
+
+By default, installs to `.claude/skills/port-manager/` in the current directory. With `--global`, installs to all detected global agent platforms. Skill files are embedded in the binary — no source tree needed.
 
 **Exit codes:** `0` always
 
@@ -378,7 +425,7 @@ At least one filter field is required.
 | PID file | `--pidfile` | `~/.port_server/port-server.pid` | PID file for the server process |
 | Log file | — | `~/.port_server/port-server.log` | Server log output (when started via `portctl start`) |
 | Server address (client) | `PORT_SERVER_ADDR` | `127.0.0.1:51234` | Address `portctl` connects to |
-| Auto-assign range | — | `3000–9999` | Port range for auto-assignment |
+| Auto-assign range | — | `1–65535` | Port range for auto-assignment |
 
 ## Project structure
 
@@ -393,7 +440,7 @@ port_server/
 │   ├── client/
 │   │   └── client.go            # HTTP client library used by portctl
 │   ├── config/
-│   │   └── config.go            # Defaults: port 51234, range 3000–9999, DB path
+│   │   └── config.go            # Defaults: port 51234, range 1–65535, DB path
 │   ├── handler/
 │   │   ├── handler.go           # HTTP route handlers (chi router)
 │   │   └── handler_test.go      # Handler integration tests
