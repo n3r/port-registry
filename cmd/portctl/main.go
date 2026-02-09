@@ -11,12 +11,19 @@ import (
 	"github.com/nfedorov/port_server/internal/config"
 	"github.com/nfedorov/port_server/internal/model"
 	"github.com/nfedorov/port_server/internal/store"
+	"github.com/nfedorov/port_server/internal/version"
 )
 
 func main() {
 	if len(os.Args) < 2 {
 		usage()
 		os.Exit(1)
+	}
+
+	switch os.Args[1] {
+	case "version", "--version", "-v":
+		fmt.Println("portctl " + version.String())
+		return
 	}
 
 	addr := os.Getenv("PORT_SERVER_ADDR")
@@ -51,7 +58,8 @@ Commands:
   release   Release port(s)
   list      List allocations
   check     Check if a port is available
-  health    Check server health`)
+  health    Check server health
+  version   Print version and exit`)
 }
 
 func cmdAllocate(c *client.Client, args []string) {

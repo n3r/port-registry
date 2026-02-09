@@ -1,0 +1,70 @@
+version: 2
+
+builds:
+  - id: port-server
+    main: ./cmd/server
+    binary: port-server
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/nfedorov/port_server/internal/version.Version={{.Version}}
+      - -X github.com/nfedorov/port_server/internal/version.Commit={{.Commit}}
+      - -X github.com/nfedorov/port_server/internal/version.Date={{.Date}}
+
+  - id: portctl
+    main: ./cmd/portctl
+    binary: portctl
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/nfedorov/port_server/internal/version.Version={{.Version}}
+      - -X github.com/nfedorov/port_server/internal/version.Commit={{.Commit}}
+      - -X github.com/nfedorov/port_server/internal/version.Date={{.Date}}
+
+archives:
+  - id: default
+    builds:
+      - port-server
+      - portctl
+    format: tar.gz
+    name_template: "port-registry_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+brews:
+  - name: port-registry
+    repository:
+      owner: n3r
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/n3r/port-registry"
+    description: "Local port registry to prevent Docker port conflicts"
+    license: MIT
+    install: |
+      bin.install "port-server"
+      bin.install "portctl"
+    test: |
+      system bin/"portctl", "version"

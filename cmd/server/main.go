@@ -16,12 +16,19 @@ import (
 	"github.com/nfedorov/port_server/internal/config"
 	"github.com/nfedorov/port_server/internal/handler"
 	"github.com/nfedorov/port_server/internal/store"
+	"github.com/nfedorov/port_server/internal/version"
 )
 
 func main() {
+	showVersion := flag.Bool("version", false, "print version and exit")
 	port := flag.Int("port", config.DefaultServerPort, "server listen port")
 	dbPath := flag.String("db", config.DefaultDBPath(), "SQLite database path")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println("port-server " + version.String())
+		return
+	}
 
 	// Ensure DB directory exists.
 	if err := os.MkdirAll(filepath.Dir(*dbPath), 0755); err != nil {
