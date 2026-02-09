@@ -66,6 +66,10 @@ func migrate(db *sql.DB) error {
 	return nil
 }
 
+func (s *SQLiteStore) Ping() error {
+	return s.db.Ping()
+}
+
 func (s *SQLiteStore) Allocate(req model.AllocateRequest, portMin, portMax int) (*model.Allocation, error) {
 	port := req.Port
 
@@ -241,7 +245,7 @@ func (s *SQLiteStore) DeleteByFilter(f Filter) (int64, error) {
 
 	// Safety: require at least one filter
 	if len(args) == 0 {
-		return 0, fmt.Errorf("at least one filter is required for delete")
+		return 0, ErrFilterRequired
 	}
 
 	res, err := s.db.Exec(query, args...)

@@ -1,4 +1,4 @@
-.PHONY: build test clean install-skill
+.PHONY: build test test-race clean lint fmt vet install-skill
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
@@ -14,6 +14,18 @@ build:
 
 test:
 	go test ./...
+
+test-race:
+	go test -race ./...
+
+lint: vet
+	@which golangci-lint >/dev/null 2>&1 && golangci-lint run ./... || echo "golangci-lint not installed, skipping (go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest)"
+
+fmt:
+	gofmt -w .
+
+vet:
+	go vet ./...
 
 clean:
 	rm -rf bin/ dist/

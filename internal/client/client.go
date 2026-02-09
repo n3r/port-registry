@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/nfedorov/port_server/internal/model"
 	"github.com/nfedorov/port_server/internal/store"
@@ -20,7 +21,7 @@ type Client struct {
 func New(addr string) *Client {
 	return &Client{
 		base:   "http://" + addr,
-		client: &http.Client{},
+		client: &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
@@ -37,7 +38,10 @@ func (c *Client) Health() error {
 }
 
 func (c *Client) Allocate(req model.AllocateRequest) (*model.Allocation, error) {
-	body, _ := json.Marshal(req)
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("marshal request: %w", err)
+	}
 	resp, err := c.client.Post(c.base+"/v1/allocations", "application/json", bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -46,7 +50,9 @@ func (c *Client) Allocate(req model.AllocateRequest) (*model.Allocation, error) 
 
 	if resp.StatusCode == http.StatusConflict {
 		var errResp model.ErrorResponse
-		json.NewDecoder(resp.Body).Decode(&errResp)
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
+			return nil, fmt.Errorf("decode conflict response: %w", err)
+		}
 		if errResp.Error == "service already allocated" {
 			return errResp.Holder, store.ErrServiceAllocated
 		}
@@ -61,7 +67,9 @@ func (c *Client) Allocate(req model.AllocateRequest) (*model.Allocation, error) 
 	}
 
 	var alloc model.Allocation
-	json.NewDecoder(resp.Body).Decode(&alloc)
+	if err := json.NewDecoder(resp.Body).Decode(&alloc); err != nil {
+		return nil, fmt.Errorf("decode allocation: %w", err)
+	}
 	return &alloc, nil
 }
 
@@ -90,7 +98,9 @@ func (c *Client) List(f store.Filter) ([]model.Allocation, error) {
 	}
 
 	var allocs []model.Allocation
-	json.NewDecoder(resp.Body).Decode(&allocs)
+	if err := json.NewDecoder(resp.Body).Decode(&allocs); err != nil {
+		return nil, fmt.Errorf("decode allocations: %w", err)
+	}
 	return allocs, nil
 }
 
@@ -112,8 +122,14 @@ func (c *Client) ReleaseByID(id int64) error {
 }
 
 func (c *Client) ReleaseByFilter(rel model.ReleaseRequest) (int64, error) {
-	body, _ := json.Marshal(rel)
-	req, _ := http.NewRequest("DELETE", c.base+"/v1/allocations", bytes.NewReader(body))
+	body, err := json.Marshal(rel)
+	if err != nil {
+		return 0, fmt.Errorf("marshal request: %w", err)
+	}
+	req, err := http.NewRequest("DELETE", c.base+"/v1/allocations", bytes.NewReader(body))
+	if err != nil {
+		return 0, fmt.Errorf("create request: %w", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -126,7 +142,9 @@ func (c *Client) ReleaseByFilter(rel model.ReleaseRequest) (int64, error) {
 	}
 
 	var result map[string]int64
-	json.NewDecoder(resp.Body).Decode(&result)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, fmt.Errorf("decode response: %w", err)
+	}
 	return result["deleted"], nil
 }
 
@@ -142,11 +160,13 @@ func (c *Client) CheckPort(port int) (*model.PortStatus, error) {
 	}
 
 	var status model.PortStatus
-	json.NewDecoder(resp.Body).Decode(&status)
+	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
+		return nil, fmt.Errorf("decode port status: %w", err)
+	}
 	return &status, nil
 }
 
 func readError(resp *http.Response) error {
-	data, _ := io.ReadAll(resp.Body)
+	data, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	return fmt.Errorf("server error (status %d): %s", resp.StatusCode, string(data))
 }

@@ -11,6 +11,7 @@ var (
 	ErrPortBusy         = errors.New("port in use on system")
 	ErrServiceAllocated = errors.New("service already allocated")
 	ErrNotFound         = errors.New("allocation not found")
+	ErrFilterRequired   = errors.New("at least one filter is required for delete")
 )
 
 type Filter struct {
@@ -21,6 +22,7 @@ type Filter struct {
 }
 
 type Store interface {
+	Ping() error
 	Allocate(req model.AllocateRequest, portMin, portMax int) (*model.Allocation, error)
 	List(f Filter) ([]model.Allocation, error)
 	GetByPort(port int) (*model.Allocation, error)

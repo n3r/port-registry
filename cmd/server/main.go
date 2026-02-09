@@ -44,8 +44,11 @@ func main() {
 
 	h := handler.New(s)
 	srv := &http.Server{
-		Addr:    fmt.Sprintf("127.0.0.1:%d", *port),
-		Handler: h.Routes(),
+		Addr:         fmt.Sprintf("127.0.0.1:%d", *port),
+		Handler:      h.Routes(),
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
 	// Graceful shutdown.

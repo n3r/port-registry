@@ -14,13 +14,19 @@ import (
 
 func setup(t *testing.T) http.Handler {
 	t.Helper()
+	_, h := setupWithStore(t)
+	return h
+}
+
+func setupWithStore(t *testing.T) (*store.SQLiteStore, http.Handler) {
+	t.Helper()
 	s, err := store.NewSQLite(":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
 	s.PortChecker = nil // skip real system checks in tests
 	t.Cleanup(func() { s.Close() })
-	return New(s).Routes()
+	return s, New(s).Routes()
 }
 
 func TestHealthz(t *testing.T) {
@@ -294,5 +300,107 @@ func TestListEmpty(t *testing.T) {
 	json.NewDecoder(w.Body).Decode(&allocs)
 	if len(allocs) != 0 {
 		t.Fatalf("expected empty list, got %d", len(allocs))
+	}
+}
+
+func TestAllocatePortOutOfRange(t *testing.T) {
+	srv := setup(t)
+
+	for _, port := range []int{-1, 0, 65536, 100000} {
+		// Port 0 means auto-assign, which is valid — skip it for this test.
+		if port == 0 {
+			continue
+		}
+		body, _ := json.Marshal(model.AllocateRequest{App: "a", Instance: "i", Service: "s", Port: port})
+		req := httptest.NewRequest("POST", "/v1/allocations", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		srv.ServeHTTP(w, req)
+
+		if w.Code != 400 {
+			t.Fatalf("port=%d: expected 400, got %d: %s", port, w.Code, w.Body.String())
+		}
+	}
+}
+
+func TestAllocateWhitespaceNames(t *testing.T) {
+	srv := setup(t)
+
+	body, _ := json.Marshal(model.AllocateRequest{App: "  ", Instance: "i", Service: "s"})
+	req := httptest.NewRequest("POST", "/v1/allocations", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != 400 {
+		t.Fatalf("expected 400 for whitespace app, got %d: %s", w.Code, w.Body.String())
+	}
+
+	body, _ = json.Marshal(model.AllocateRequest{App: "a", Instance: " \t ", Service: "s"})
+	req = httptest.NewRequest("POST", "/v1/allocations", bytes.NewReader(body))
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != 400 {
+		t.Fatalf("expected 400 for whitespace instance, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestAllocateTrimsWhitespace(t *testing.T) {
+	srv := setup(t)
+
+	body, _ := json.Marshal(model.AllocateRequest{App: " myapp ", Instance: " i1 ", Service: " web "})
+	req := httptest.NewRequest("POST", "/v1/allocations", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != 201 {
+		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var alloc model.Allocation
+	json.NewDecoder(w.Body).Decode(&alloc)
+	if alloc.App != "myapp" || alloc.Instance != "i1" || alloc.Service != "web" {
+		t.Fatalf("expected trimmed names, got app=%q instance=%q service=%q", alloc.App, alloc.Instance, alloc.Service)
+	}
+}
+
+func TestCheckPortOutOfRange(t *testing.T) {
+	srv := setup(t)
+
+	for _, port := range []int{0, -1, 65536} {
+		req := httptest.NewRequest("GET", "/v1/ports/"+strconv.Itoa(port), nil)
+		w := httptest.NewRecorder()
+		srv.ServeHTTP(w, req)
+
+		if w.Code != 400 {
+			t.Fatalf("port=%d: expected 400, got %d: %s", port, w.Code, w.Body.String())
+		}
+	}
+}
+
+func TestHealthzDBDown(t *testing.T) {
+	s, srv := setupWithStore(t)
+
+	// Close the store to simulate a broken DB connection.
+	s.Close()
+
+	req := httptest.NewRequest("GET", "/healthz", nil)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != 503 {
+		t.Fatalf("expected 503, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestReleaseFilterNoFilter(t *testing.T) {
+	srv := setup(t)
+
+	body, _ := json.Marshal(model.ReleaseRequest{})
+	req := httptest.NewRequest("DELETE", "/v1/allocations", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	if w.Code != 400 {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
 	}
 }

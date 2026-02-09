@@ -2,8 +2,10 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/nfedorov/port_server/internal/config"
@@ -39,6 +41,10 @@ func (h *Handler) Routes() chi.Router {
 }
 
 func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
+	if err := h.store.Ping(); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "error", "detail": err.Error()})
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -48,8 +54,15 @@ func (h *Handler) Allocate(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "invalid JSON"})
 		return
 	}
+	req.App = strings.TrimSpace(req.App)
+	req.Instance = strings.TrimSpace(req.Instance)
+	req.Service = strings.TrimSpace(req.Service)
 	if req.App == "" || req.Instance == "" || req.Service == "" {
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "app, instance, and service are required"})
+		return
+	}
+	if req.Port != 0 && (req.Port < 1 || req.Port > 65535) {
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "port must be between 1 and 65535"})
 		return
 	}
 
@@ -115,8 +128,12 @@ func (h *Handler) ReleaseByFilter(w http.ResponseWriter, r *http.Request) {
 	}
 
 	n, err := h.store.DeleteByFilter(f)
-	if err != nil {
+	if errors.Is(err, store.ErrFilterRequired) {
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: err.Error()})
+		return
+	}
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, model.ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -147,6 +164,10 @@ func (h *Handler) CheckPort(w http.ResponseWriter, r *http.Request) {
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "invalid port"})
+		return
+	}
+	if port < 1 || port > 65535 {
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "port must be between 1 and 65535"})
 		return
 	}
 

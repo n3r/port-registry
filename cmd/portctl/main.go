@@ -22,6 +22,13 @@ import (
 	"github.com/nfedorov/port_server/internal/version"
 )
 
+const (
+	startHealthRetries  = 20
+	startHealthInterval = 100 * time.Millisecond
+	stopRetries         = 50
+	stopRetryInterval   = 100 * time.Millisecond
+)
+
 func main() {
 	if len(os.Args) < 2 {
 		usage()
@@ -371,10 +378,11 @@ func cmdStart() {
 	// Wait briefly for the server to become healthy.
 	addr := fmt.Sprintf("127.0.0.1:%d", config.DefaultServerPort)
 	healthURL := "http://" + addr + "/healthz"
+	healthClient := &http.Client{Timeout: time.Second}
 	healthy := false
-	for i := 0; i < 20; i++ {
-		time.Sleep(100 * time.Millisecond)
-		resp, err := http.Get(healthURL)
+	for i := 0; i < startHealthRetries; i++ {
+		time.Sleep(startHealthInterval)
+		resp, err := healthClient.Get(healthURL)
 		if err == nil {
 			resp.Body.Close()
 			if resp.StatusCode == 200 {
@@ -419,8 +427,8 @@ func cmdStop() {
 	}
 
 	// Wait for process to exit.
-	for i := 0; i < 50; i++ {
-		time.Sleep(100 * time.Millisecond)
+	for i := 0; i < stopRetries; i++ {
+		time.Sleep(stopRetryInterval)
 		if !isProcessAlive(pid) {
 			// Clean up PID file if server didn't remove it.
 			os.Remove(config.DefaultPIDPath())
@@ -449,7 +457,8 @@ func cmdStatus() {
 	// Check health endpoint.
 	addr := fmt.Sprintf("127.0.0.1:%d", config.DefaultServerPort)
 	healthURL := "http://" + addr + "/healthz"
-	resp, err := http.Get(healthURL)
+	healthClient := &http.Client{Timeout: time.Second}
+	resp, err := healthClient.Get(healthURL)
 	if err == nil {
 		resp.Body.Close()
 		if resp.StatusCode == 200 {
