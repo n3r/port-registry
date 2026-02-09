@@ -50,6 +50,9 @@ func (c *Client) Allocate(req model.AllocateRequest) (*model.Allocation, error) 
 		if errResp.Error == "service already allocated" {
 			return errResp.Holder, store.ErrServiceAllocated
 		}
+		if errResp.Error == "port in use on system" {
+			return nil, store.ErrPortBusy
+		}
 		return errResp.Holder, store.ErrPortTaken
 	}
 

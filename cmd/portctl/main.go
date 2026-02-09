@@ -125,6 +125,10 @@ func cmdAllocate(c *client.Client, args []string) {
 			alloc.Port, alloc.App, alloc.Instance, alloc.Service, ui.Subtle(fmt.Sprintf("(id=%d)", alloc.ID))))
 		os.Exit(1)
 	}
+	if err == store.ErrPortBusy {
+		fmt.Fprintln(os.Stderr, ui.Errorf("port %d is in use on the system", *port))
+		os.Exit(1)
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, ui.Errorf("%v", err))
 		os.Exit(1)

@@ -12,6 +12,7 @@ func newTestStore(t *testing.T) *SQLiteStore {
 	if err != nil {
 		t.Fatal(err)
 	}
+	s.PortChecker = nil // skip real system checks in tests
 	t.Cleanup(func() { s.Close() })
 	return s
 }
@@ -185,5 +186,32 @@ func TestDeleteByFilterRequiresFilter(t *testing.T) {
 	_, err := s.DeleteByFilter(Filter{})
 	if err == nil {
 		t.Fatal("expected error for empty filter")
+	}
+}
+
+func TestAllocatePortBusy(t *testing.T) {
+	s := newTestStore(t)
+	s.PortChecker = func(port int) bool { return port != 5000 }
+
+	_, err := s.Allocate(model.AllocateRequest{
+		App: "a", Instance: "i", Service: "s", Port: 5000,
+	}, 3000, 9999)
+	if err != ErrPortBusy {
+		t.Fatalf("expected ErrPortBusy, got %v", err)
+	}
+}
+
+func TestAllocateAutoAssignSkipsBusy(t *testing.T) {
+	s := newTestStore(t)
+	s.PortChecker = func(port int) bool { return port != 3000 }
+
+	a, err := s.Allocate(model.AllocateRequest{
+		App: "a", Instance: "i", Service: "s",
+	}, 3000, 9999)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Port != 3001 {
+		t.Fatalf("expected auto-assigned port 3001 (3000 busy), got %d", a.Port)
 	}
 }

@@ -3,6 +3,8 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"net"
+	"strconv"
 	"time"
 
 	"github.com/nfedorov/port_server/internal/model"
@@ -10,7 +12,18 @@ import (
 )
 
 type SQLiteStore struct {
-	db *sql.DB
+	db          *sql.DB
+	PortChecker func(port int) bool // returns true if port is free on the system; nil = skip check
+}
+
+// CheckPortAvailable probes whether a TCP port is free on localhost.
+func CheckPortAvailable(port int) bool {
+	ln, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(port))
+	if err != nil {
+		return false
+	}
+	ln.Close()
+	return true
 }
 
 func NewSQLite(dsn string) (*SQLiteStore, error) {
@@ -29,7 +42,7 @@ func NewSQLite(dsn string) (*SQLiteStore, error) {
 		return nil, err
 	}
 
-	return &SQLiteStore{db: db}, nil
+	return &SQLiteStore{db: db, PortChecker: CheckPortAvailable}, nil
 }
 
 func migrate(db *sql.DB) error {
@@ -62,6 +75,8 @@ func (s *SQLiteStore) Allocate(req model.AllocateRequest, portMin, portMax int) 
 		if err != nil {
 			return nil, err
 		}
+	} else if s.PortChecker != nil && !s.PortChecker(port) {
+		return nil, ErrPortBusy
 	}
 
 	now := time.Now().UTC()
@@ -127,7 +142,7 @@ func (s *SQLiteStore) findFreePort(portMin, portMax int) (int, error) {
 	}
 
 	for p := portMin; p <= portMax; p++ {
-		if !used[p] {
+		if !used[p] && (s.PortChecker == nil || s.PortChecker(p)) {
 			return p, nil
 		}
 	}

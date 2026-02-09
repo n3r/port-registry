@@ -68,6 +68,12 @@ func (h *Handler) Allocate(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	if err == store.ErrPortBusy {
+		writeJSON(w, http.StatusConflict, model.ErrorResponse{
+			Error: "port in use on system",
+		})
+		return
+	}
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, model.ErrorResponse{Error: err.Error()})
 		return

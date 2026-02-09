@@ -18,6 +18,7 @@ func setup(t *testing.T) http.Handler {
 	if err != nil {
 		t.Fatal(err)
 	}
+	s.PortChecker = nil // skip real system checks in tests
 	t.Cleanup(func() { s.Close() })
 	return New(s).Routes()
 }

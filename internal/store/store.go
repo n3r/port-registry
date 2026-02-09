@@ -8,6 +8,7 @@ import (
 
 var (
 	ErrPortTaken        = errors.New("port already allocated")
+	ErrPortBusy         = errors.New("port in use on system")
 	ErrServiceAllocated = errors.New("service already allocated")
 	ErrNotFound         = errors.New("allocation not found")
 )
