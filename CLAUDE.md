@@ -43,3 +43,11 @@ internal/client/          # Go HTTP client wrapping the REST API
 | Port range | `3000–9999` |
 | DB path | `~/.port_server/ports.db` |
 | Client env var | `PORT_SERVER_ADDR` (default `127.0.0.1:51234`) |
+
+## Agent Skill
+
+The `skill/port-manager/` directory contains an agent skill that teaches AI agents to use `portctl` automatically when managing ports. Install it cross-project with:
+
+```bash
+make install-skill   # copies to ~/.claude/skills/ and ~/.agents/skills/
+```
