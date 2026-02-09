@@ -112,19 +112,19 @@ make build
 ./bin/portctl start
 # → port-server started (pid 12345)
 
-# Allocate a port for your service (--app defaults to repo/folder name)
-./bin/portctl allocate --instance dev --service postgres
-# → allocated port 3000 (id=1) for myapp/dev/postgres
+# Allocate a port for your service (--app and --instance auto-detected)
+./bin/portctl allocate --service postgres
+# → allocated port 3000 (id=1) for myapp/main/postgres
 
 # Allocate a specific port
-./bin/portctl allocate --instance dev --service web --port 8080
-# → allocated port 8080 (id=2) for myapp/dev/web
+./bin/portctl allocate --service web --port 8080
+# → allocated port 8080 (id=2) for myapp/main/web
 
 # List everything
 ./bin/portctl list
 # ID  APP    INSTANCE  SERVICE   PORT  CREATED
-# 1   myapp  dev       postgres  3000  2025-02-08 15:04:05
-# 2   myapp  dev       web       8080  2025-02-08 15:04:06
+# 1   myapp  main      postgres  3000  2025-02-08 15:04:05
+# 2   myapp  main      web       8080  2025-02-08 15:04:06
 
 # Check if a port is free
 ./bin/portctl check --port 3000
@@ -190,13 +190,13 @@ Reports the PID and health status. Cleans up stale PID files automatically.
 Allocate a port for a service.
 
 ```
-portctl allocate [--app <name>] --instance <name> --service <name> [--port <number>]
+portctl allocate [--app <name>] [--instance <name>] --service <name> [--port <number>]
 ```
 
 | Flag | Required | Default | Description |
 |------|----------|---------|-------------|
 | `--app` | no | git repo or folder name | Application name |
-| `--instance` | yes | | Instance name |
+| `--instance` | no | worktree or branch name | Instance name |
 | `--service` | yes | | Service name |
 | `--port` | no | 0 (auto) | Specific port to allocate; 0 = auto-assign from 1–65535 |
 
@@ -215,7 +215,7 @@ portctl release [--app <name>] [--instance <name>] [--service <name>] [--port <n
 |------|----------|---------|-------------|
 | `--id` | no | 0 | Release a specific allocation by ID |
 | `--app` | no | git repo or folder name | Filter by application name |
-| `--instance` | no | | Filter by instance name |
+| `--instance` | no | worktree or branch name | Filter by instance name |
 | `--service` | no | | Filter by service name |
 | `--port` | no | 0 | Filter by port number |
 
@@ -234,7 +234,7 @@ portctl list [--app <name>] [--instance <name>] [--service <name>] [--json]
 | Flag | Required | Default | Description |
 |------|----------|---------|-------------|
 | `--app` | no | git repo or folder name | Filter by application |
-| `--instance` | no | | Filter by instance |
+| `--instance` | no | worktree or branch name | Filter by instance |
 | `--service` | no | | Filter by service |
 | `--json` | no | false | Output as JSON instead of table |
 

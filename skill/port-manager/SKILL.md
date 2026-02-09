@@ -45,17 +45,17 @@ make build
 ### Allocate a port (auto-assign)
 
 ```bash
-portctl allocate --instance <env> --service <service>
+portctl allocate --service <service>
 ```
 
-Output: `allocated port 4521 (id=3) for myapp/dev/postgres`
+Output: `allocated port 4521 (id=3) for myapp/main/postgres`
 
-`--app` defaults to the git repo name (or folder name if not in a repo). Pass `--app <name>` only to override.
+`--app` defaults to the git repo name (or folder name if not in a repo). `--instance` defaults to the git worktree directory name (for linked worktrees) or branch name (for main worktree). Pass `--app <name>` or `--instance <name>` only to override.
 
 ### Allocate a specific port
 
 ```bash
-portctl allocate --instance <env> --service <service> --port <N>
+portctl allocate --service <service> --port <N>
 ```
 
 Fails if the port is already taken. Prefer auto-assign unless the user explicitly requests a specific port.
@@ -79,7 +79,7 @@ portctl list --app <project> --json   # JSON output for parsing
 ### Release ports
 
 ```bash
-portctl release                                          # release all ports for the current project
+portctl release                                          # release ports for current project + instance (auto-detected)
 portctl release --instance <env>                         # release ports for a specific instance
 portctl release --app <project>                          # release by explicit project name
 portctl release --id <N>                                 # release a single allocation by ID
@@ -89,11 +89,11 @@ portctl release --id <N>                                 # release a single allo
 
 | Field      | Value                        | Examples                          |
 |------------|------------------------------|-----------------------------------|
-| `--app`    | Project or repository name (auto-detected from git repo or folder name) | `myapp`, `backend`, `analytics` |
-| `--instance` | Branch, environment, or variant | `dev`, `test`, `feature-auth`  |
+| `--app`    | Project or repository name (auto-detected from git repo name, even in linked worktrees) | `myapp`, `backend`, `analytics` |
+| `--instance` | Worktree or branch name (auto-detected: worktree dir name for linked worktrees, branch name for main worktree) | `main`, `feature-auth`, `dev` |
 | `--service`  | Container or service name   | `postgres`, `redis`, `web`, `api` |
 
-Do not pass `--app` unless you need to override the auto-detected project name.
+Do not pass `--app` or `--instance` unless you need to override the auto-detected values.
 
 ## What to Register
 
@@ -128,25 +128,25 @@ When setting up services that need ports:
    portctl list
    ```
 
-2. **Allocate ports** for each service:
+2. **Allocate ports** for each service (--app and --instance auto-detected):
    ```bash
-   portctl allocate --instance dev --service postgres
-   portctl allocate --instance dev --service redis
-   portctl allocate --instance dev --service web
+   portctl allocate --service postgres
+   portctl allocate --service redis
+   portctl allocate --service web
    ```
 
 3. **Use the allocated ports** in configuration files (docker-compose.yml, .env, etc.)
 
 4. **When tearing down**, release the ports:
    ```bash
-   portctl release --instance dev
+   portctl release
    ```
 
 When registering ports from an existing project:
 
 1. **Scan all port sources**: docker-compose.yml, .env, package.json scripts, Makefile, etc.
 2. **Filter to host-bound ports only**: skip container-only Docker port mappings
-3. **Register with specific port**: use `--port <N>` for each known host port (--app is auto-detected)
+3. **Register with specific port**: use `--port <N>` for each known host port (--app and --instance are auto-detected)
 
 ## Port Range
 

@@ -5,18 +5,18 @@
 When a project needs multiple services (e.g., a typical web stack), allocate all ports upfront:
 
 ```bash
-# Allocate ports for a full stack (--app auto-detected from repo/folder name)
-portctl allocate --instance dev --service postgres
-# -> allocated port 3042 (id=1) for myapp/dev/postgres
+# Allocate ports for a full stack (--app and --instance auto-detected)
+portctl allocate --service postgres
+# -> allocated port 3042 (id=1) for myapp/main/postgres
 
-portctl allocate --instance dev --service redis
-# -> allocated port 3043 (id=2) for myapp/dev/redis
+portctl allocate --service redis
+# -> allocated port 3043 (id=2) for myapp/main/redis
 
-portctl allocate --instance dev --service web
-# -> allocated port 3044 (id=3) for myapp/dev/web
+portctl allocate --service web
+# -> allocated port 3044 (id=3) for myapp/main/web
 
-portctl allocate --instance dev --service api
-# -> allocated port 3045 (id=4) for myapp/dev/api
+portctl allocate --service api
+# -> allocated port 3045 (id=4) for myapp/main/api
 ```
 
 Verify all allocations:
@@ -85,7 +85,7 @@ services:
 For projects that use `.env` files with docker-compose:
 
 ```bash
-# Allocate and capture ports (--app auto-detected)
+# Allocate and capture ports (--app and --instance auto-detected)
 PG_PORT=$(portctl list --service postgres --json | jq '.[0].port')
 REDIS_PORT=$(portctl list --service redis --json | jq '.[0].port')
 WEB_PORT=$(portctl list --service web --json | jq '.[0].port')
@@ -109,16 +109,19 @@ services:
 
 ## Multiple Instances
 
-Use the `--instance` flag to run parallel environments without conflicts:
+Use the `--instance` flag to run parallel environments without conflicts. When using git worktrees, `--instance` is auto-detected from the worktree directory name. On the main worktree, it defaults to the branch name.
 
 ```bash
-# Developer A working on feature-auth (--app auto-detected)
-portctl allocate --instance feature-auth --service postgres
-portctl allocate --instance feature-auth --service web
+# Developer A working on feature-auth worktree (--instance auto-detected as "feature-auth")
+portctl allocate --service postgres
+portctl allocate --service web
 
-# Developer B working on feature-payments
-portctl allocate --instance feature-payments --service postgres
-portctl allocate --instance feature-payments --service web
+# Developer B working on feature-payments worktree (--instance auto-detected as "feature-payments")
+portctl allocate --service postgres
+portctl allocate --service web
+
+# Override --instance explicitly if needed
+portctl allocate --instance staging --service postgres
 
 # Each gets unique ports, no conflicts
 portctl list
@@ -136,13 +139,13 @@ When a user asks you to register ports for an existing project, scan all port so
 Register each host-bound port with `--port <N>`:
 
 ```bash
-# Docker-exposed ports (--app auto-detected from repo/folder name)
-portctl allocate --instance dev --service postgres --port 5432
-portctl allocate --instance dev --service proxy-nginx --port 80
+# Docker-exposed ports (--app and --instance auto-detected)
+portctl allocate --service postgres --port 5432
+portctl allocate --service proxy-nginx --port 80
 
 # npm script ports
-portctl allocate --instance dev --service storybook --port 6006
-portctl allocate --instance dev --service nodejs-dev --port 3001
+portctl allocate --service storybook --port 6006
+portctl allocate --service nodejs-dev --port 3001
 ```
 
 Do **not** register container-only ports (bare `"3001"` in docker-compose) unless the same port is also used by a host-side process like `npm run dev`.
@@ -155,16 +158,16 @@ Do **not** register container-only ports (bare `"3001"` in docker-compose) unles
 portctl release
 ```
 
-### Release a specific environment
+### Release a specific instance
 
 ```bash
 portctl release --instance dev
 ```
 
-### Release a single service
+### Release a single service (--instance auto-detected)
 
 ```bash
-portctl release --instance dev --service postgres
+portctl release --service postgres
 ```
 
 ### Release by allocation ID
