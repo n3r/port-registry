@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/nfedorov/port_server/internal/model"
-	"github.com/nfedorov/port_server/internal/store"
+	"github.com/n3r/port-registry/internal/model"
+	"github.com/n3r/port-registry/internal/store"
 )
 
 type Client struct {

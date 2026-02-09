@@ -1,12 +1,12 @@
 ---
-name: port-manager
+name: port-registry
 description: Manage local port allocations to prevent conflicts between Docker containers, dev servers, and services across projects. Use when setting up docker-compose, starting dev servers, assigning ports, or when the user mentions port conflicts.
 user-invocable: false
 allowed-tools:
   - Bash(portctl *)
 ---
 
-# Port Manager
+# Port Registry
 
 You have access to `portctl`, a CLI that allocates and tracks local ports across projects. Use it to prevent port conflicts between Docker containers, dev servers, and other services.
 
@@ -20,7 +20,7 @@ You have access to `portctl`, a CLI that allocates and tracks local ports across
 
 ## Prerequisites
 
-The port-server must be running. Check with:
+The port-registry must be running. Check with:
 
 ```bash
 portctl health
@@ -29,13 +29,13 @@ portctl health
 If it's not running, start it:
 
 ```bash
-port-server &
+port-registry &
 ```
 
 If `portctl` is not on PATH, build it first:
 
 ```bash
-# From the port_server repo
+# From the port-registry repo
 make build
 # Then either add bin/ to PATH or use the full path
 ```

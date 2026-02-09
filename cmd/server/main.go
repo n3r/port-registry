@@ -13,10 +13,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nfedorov/port_server/internal/config"
-	"github.com/nfedorov/port_server/internal/handler"
-	"github.com/nfedorov/port_server/internal/store"
-	"github.com/nfedorov/port_server/internal/version"
+	"github.com/n3r/port-registry/internal/config"
+	"github.com/n3r/port-registry/internal/handler"
+	"github.com/n3r/port-registry/internal/store"
+	"github.com/n3r/port-registry/internal/version"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Println("port-server " + version.String())
+		fmt.Println("port-registry " + version.String())
 		return
 	}
 
@@ -70,7 +70,7 @@ func main() {
 	defer os.Remove(*pidFile)
 
 	go func() {
-		log.Printf("port-server listening on %s", srv.Addr)
+		log.Printf("port-registry listening on %s", srv.Addr)
 		if err := srv.Serve(ln); err != http.ErrServerClosed {
 			log.Fatalf("server error: %v", err)
 		}

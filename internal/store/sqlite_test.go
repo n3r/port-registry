@@ -3,7 +3,7 @@ package store
 import (
 	"testing"
 
-	"github.com/nfedorov/port_server/internal/model"
+	"github.com/n3r/port-registry/internal/model"
 )
 
 func newTestStore(t *testing.T) *SQLiteStore {

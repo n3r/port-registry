@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/nfedorov/port_server/internal/model"
-	"github.com/nfedorov/port_server/internal/store"
+	"github.com/n3r/port-registry/internal/model"
+	"github.com/n3r/port-registry/internal/store"
 )
 
 func setup(t *testing.T) http.Handler {

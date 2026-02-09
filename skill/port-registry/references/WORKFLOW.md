@@ -1,4 +1,4 @@
-# Port Manager Workflow Reference
+# Port Registry Workflow Reference
 
 ## Multi-Service Allocation
 
@@ -190,16 +190,16 @@ portctl check --port 5432
 
 ### "connection refused" from portctl
 
-The port-server is not running. Start it:
+The port-registry is not running. Start it:
 
 ```bash
-port-server &
+port-registry &
 ```
 
 Or if not on PATH:
 
 ```bash
-~/path/to/port_server/bin/port-server &
+~/path/to/port-registry/bin/port-registry &
 ```
 
 The server listens on `127.0.0.1:51234` by default.
@@ -223,14 +223,14 @@ portctl release --app <stale-project>  # clean up old projects
 
 ### portctl not found
 
-Build from the port_server repository:
+Build from the port-registry repository:
 
 ```bash
-cd /path/to/port_server
+cd /path/to/port-registry
 make build
 ```
 
 Then either:
-- Add `bin/` to your PATH: `export PATH="/path/to/port_server/bin:$PATH"`
+- Add `bin/` to your PATH: `export PATH="/path/to/port-registry/bin:$PATH"`
 - Install to a system path: `cp bin/portctl /usr/local/bin/`
 - Run `make install-skill` to set up the skill with the correct paths

@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	skilldata "github.com/nfedorov/port_server/skill"
+	skilldata "github.com/n3r/port-registry/skill"
 )
 
 // Platform represents an agent platform that supports skills.
@@ -56,7 +56,7 @@ func Install(homeDir, cwd string, global bool) InstallResult {
 
 // installPlatformCreate creates the platform directory if needed, then writes skill files.
 func installPlatformCreate(p Platform, result *InstallResult) {
-	destDir := filepath.Join(p.Dir, "skills", "port-manager", "references")
+	destDir := filepath.Join(p.Dir, "skills", "port-registry", "references")
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		result.Errors = append(result.Errors, InstallError{Platform: p, Err: err})
 		return
@@ -72,7 +72,7 @@ func installPlatform(p Platform, result *InstallResult) {
 		return
 	}
 
-	destDir := filepath.Join(p.Dir, "skills", "port-manager", "references")
+	destDir := filepath.Join(p.Dir, "skills", "port-registry", "references")
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		result.Errors = append(result.Errors, InstallError{Platform: p, Err: err})
 		return
@@ -81,7 +81,7 @@ func installPlatform(p Platform, result *InstallResult) {
 }
 
 func writeSkillFiles(p Platform, destDir string, result *InstallResult) {
-	skillPath := filepath.Join(p.Dir, "skills", "port-manager", "SKILL.md")
+	skillPath := filepath.Join(p.Dir, "skills", "port-registry", "SKILL.md")
 	if err := os.WriteFile(skillPath, skilldata.SkillMD, 0644); err != nil {
 		result.Errors = append(result.Errors, InstallError{Platform: p, Err: err})
 		return

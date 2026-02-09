@@ -1,4 +1,4 @@
-# port-server
+# port-registry
 
 A local port registry that prevents port conflicts across Docker containers and dev services on your machine.
 
@@ -6,17 +6,17 @@ A local port registry that prevents port conflicts across Docker containers and 
 
 When you run multiple projects locally — each with their own Docker Compose stacks — port collisions are inevitable. Two projects both want port 5432 for Postgres, or 3000 for a web server. You discover the conflict only when `docker compose up` fails, then waste time grepping through YAML files to find a free port.
 
-**port-server** solves this by maintaining a central registry of allocated ports. Services request a port (or ask for any available one), and the server guarantees no two services get the same port.
+**port-registry** solves this by maintaining a central registry of allocated ports. Services request a port (or ask for any available one), and the server guarantees no two services get the same port.
 
 ## How it works
 
 ```
 ┌──────────────┐         HTTP          ┌──────────────┐        ┌────────────┐
-│   portctl    │ ───────────────────── │  port-server │ ────── │   SQLite   │
+│   portctl    │ ───────────────────── │ port-registry│ ────── │   SQLite   │
 │   (CLI)      │   localhost:51234     │  (HTTP API)  │        │   (WAL)    │
 └──────────────┘                       └──────────────┘        └────────────┘
 
-• port-server runs as a background daemon on 127.0.0.1
+• port-registry runs as a background daemon on 127.0.0.1
 • portctl is the CLI client — allocate, release, list, check ports
 • SQLite with WAL mode stores allocations durably
 • Auto-assign picks the first free port in 1–65535
@@ -24,7 +24,7 @@ When you run multiple projects locally — each with their own Docker Compose st
 
 ## Agent skill
 
-port-server ships with an agent skill that teaches AI coding agents (Claude Code, OpenAI Codex, etc.) to use `portctl` automatically when managing ports. Instead of hardcoding ports, agents will allocate from the registry.
+port-registry ships with an agent skill that teaches AI coding agents (Claude Code, OpenAI Codex, etc.) to use `portctl` automatically when managing ports. Instead of hardcoding ports, agents will allocate from the registry.
 
 ### Install locally (recommended)
 
@@ -34,7 +34,7 @@ Run from your project directory:
 portctl skill install
 ```
 
-This creates `.claude/skills/port-manager/` in the current directory. The skill is scoped to that project.
+This creates `.claude/skills/port-registry/` in the current directory. The skill is scoped to that project.
 
 ### Install globally
 
@@ -48,9 +48,9 @@ This installs to all detected global platforms:
 
 | Platform | Directory |
 |----------|-----------|
-| Claude Code | `~/.claude/skills/port-manager/` |
-| OpenAI Codex | `~/.codex/skills/port-manager/` |
-| Generic Agents | `~/.agents/skills/port-manager/` |
+| Claude Code | `~/.claude/skills/port-registry/` |
+| OpenAI Codex | `~/.codex/skills/port-registry/` |
+| Generic Agents | `~/.agents/skills/port-registry/` |
 
 Platforms that don't exist on your system are skipped.
 
@@ -99,7 +99,7 @@ brew install n3r/tap/port-registry
 ### From source
 
 ```bash
-make build    # produces bin/port-server and bin/portctl
+make build    # produces bin/port-registry and bin/portctl
 ```
 
 ## Quick start
@@ -110,7 +110,7 @@ make build
 
 # Start the server
 ./bin/portctl start
-# → port-server started (pid 12345)
+# → port-registry started (pid 12345)
 
 # Allocate a port for your service (--app and --instance auto-detected)
 ./bin/portctl allocate --service postgres
@@ -137,23 +137,23 @@ make build
 
 ## CLI reference
 
-The CLI binary is `portctl`. Set `PORT_SERVER_ADDR` to override the default server address (`127.0.0.1:51234`).
+The CLI binary is `portctl`. Set `PORT_REGISTRY_ADDR` to override the default server address (`127.0.0.1:51234`).
 
 ### `portctl start`
 
-Start the port-server daemon in the background.
+Start the port-registry daemon in the background.
 
 ```
 portctl start
 ```
 
-Locates the `port-server` binary next to the `portctl` executable, starts it as a detached process, and waits for the health check to pass. Logs are written to `~/.port_server/port-server.log`.
+Locates the `port-registry` binary next to the `portctl` executable, starts it as a detached process, and waits for the health check to pass. Logs are written to `~/.port-registry/port-registry.log`.
 
 **Exit codes:** `0` started successfully, `1` already running or startup failed
 
 ### `portctl stop`
 
-Stop the running port-server daemon.
+Stop the running port-registry daemon.
 
 ```
 portctl stop
@@ -165,7 +165,7 @@ Reads the PID file, sends SIGTERM, and waits up to 5 seconds for the process to 
 
 ### `portctl restart`
 
-Stop and start the port-server daemon.
+Stop and start the port-registry daemon.
 
 ```
 portctl restart
@@ -175,7 +175,7 @@ portctl restart
 
 ### `portctl status`
 
-Show whether the port-server daemon is running.
+Show whether the port-registry daemon is running.
 
 ```
 portctl status
@@ -274,7 +274,7 @@ portctl version
 
 ### `portctl skill install`
 
-Install the port-manager agent skill.
+Install the port-registry agent skill.
 
 ```
 portctl skill install            # install to project-local .claude/
@@ -285,7 +285,7 @@ portctl skill install --global   # install to global platforms (~/.claude, ~/.co
 |------|----------|---------|-------------|
 | `--global` | no | false | Install to global platforms instead of project-local |
 
-By default, installs to `.claude/skills/port-manager/` in the current directory. With `--global`, installs to all detected global agent platforms. Skill files are embedded in the binary — no source tree needed.
+By default, installs to `.claude/skills/port-registry/` in the current directory. With `--global`, installs to all detected global agent platforms. Skill files are embedded in the binary — no source tree needed.
 
 **Exit codes:** `0` always
 
@@ -445,16 +445,16 @@ At least one filter field is required.
 | Setting | Flag / Env | Default | Description |
 |---------|-----------|---------|-------------|
 | Server port | `--port` | `51234` | Port the HTTP server listens on |
-| Database path | `--db` | `~/.port_server/ports.db` | SQLite database file location |
-| PID file | `--pidfile` | `~/.port_server/port-server.pid` | PID file for the server process |
-| Log file | — | `~/.port_server/port-server.log` | Server log output (when started via `portctl start`) |
-| Server address (client) | `PORT_SERVER_ADDR` | `127.0.0.1:51234` | Address `portctl` connects to |
+| Database path | `--db` | `~/.port-registry/ports.db` | SQLite database file location |
+| PID file | `--pidfile` | `~/.port-registry/port-registry.pid` | PID file for the server process |
+| Log file | — | `~/.port-registry/port-registry.log` | Server log output (when started via `portctl start`) |
+| Server address (client) | `PORT_REGISTRY_ADDR` | `127.0.0.1:51234` | Address `portctl` connects to |
 | Auto-assign range | — | `1–65535` | Port range for auto-assignment |
 
 ## Project structure
 
 ```
-port_server/
+port-registry/
 ├── cmd/
 │   ├── server/
 │   │   └── main.go              # HTTP server entry point
@@ -484,7 +484,7 @@ port_server/
 │       └── version.go           # Version info (injected via ldflags)
 ├── skill/
 │   ├── embed.go                 # go:embed for skill files
-│   └── port-manager/
+│   └── port-registry/
 │       ├── SKILL.md             # Agent skill definition
 │       └── references/
 │           └── WORKFLOW.md      # Agent workflow reference
@@ -500,7 +500,7 @@ port_server/
 ## Development
 
 ```bash
-make build    # Build bin/port-server and bin/portctl
+make build    # Build bin/port-registry and bin/portctl
 make test     # Run all tests (go test ./...)
 make clean    # Remove bin/
 ```

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	skilldata "github.com/nfedorov/port_server/skill"
+	skilldata "github.com/n3r/port-registry/skill"
 )
 
 func TestInstallGlobalDetectsAndWritesToPlatforms(t *testing.T) {
@@ -31,7 +31,7 @@ func TestInstallGlobalDetectsAndWritesToPlatforms(t *testing.T) {
 	}
 
 	// Verify file contents for .claude.
-	skillMD, err := os.ReadFile(filepath.Join(home, ".claude", "skills", "port-manager", "SKILL.md"))
+	skillMD, err := os.ReadFile(filepath.Join(home, ".claude", "skills", "port-registry", "SKILL.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestInstallGlobalDetectsAndWritesToPlatforms(t *testing.T) {
 		t.Error("SKILL.md content mismatch")
 	}
 
-	workflowMD, err := os.ReadFile(filepath.Join(home, ".claude", "skills", "port-manager", "references", "WORKFLOW.md"))
+	workflowMD, err := os.ReadFile(filepath.Join(home, ".claude", "skills", "port-registry", "references", "WORKFLOW.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestInstallGlobalDetectsAndWritesToPlatforms(t *testing.T) {
 	}
 
 	// Verify files for .agents too.
-	skillMD, err = os.ReadFile(filepath.Join(home, ".agents", "skills", "port-manager", "SKILL.md"))
+	skillMD, err = os.ReadFile(filepath.Join(home, ".agents", "skills", "port-registry", "SKILL.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,10 +69,10 @@ func TestInstallLocalDefault(t *testing.T) {
 	}
 
 	// Verify project-level install.
-	if _, err := os.Stat(filepath.Join(cwd, ".claude", "skills", "port-manager", "SKILL.md")); err != nil {
+	if _, err := os.Stat(filepath.Join(cwd, ".claude", "skills", "port-registry", "SKILL.md")); err != nil {
 		t.Error("project-level SKILL.md not found")
 	}
-	if _, err := os.Stat(filepath.Join(cwd, ".claude", "skills", "port-manager", "references", "WORKFLOW.md")); err != nil {
+	if _, err := os.Stat(filepath.Join(cwd, ".claude", "skills", "port-registry", "references", "WORKFLOW.md")); err != nil {
 		t.Error("project-level WORKFLOW.md not found")
 	}
 

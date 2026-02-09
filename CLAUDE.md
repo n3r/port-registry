@@ -3,7 +3,7 @@
 ## Build & Run
 
 ```bash
-make build      # builds bin/port-server and bin/portctl
+make build      # builds bin/port-registry and bin/portctl
 make test       # go test ./...
 make clean      # rm -rf bin/
 ```
@@ -22,7 +22,7 @@ Layered design: **CLI (`portctl`) -> HTTP client -> server -> handler -> store i
 ```
 cmd/server/main.go       # HTTP server entry point (flag: -port, -db, -pidfile)
 cmd/portctl/main.go      # CLI client (subcommands: start, stop, restart, status, allocate, release, list, check, health, skill, version)
-internal/config/          # Constants: DefaultServerPort=51234, port range 3000-9999
+internal/config/          # Constants: DefaultServerPort=51234, port range 1-65535
 internal/model/           # Shared types: Allocation, AllocateRequest, PortStatus, etc.
 internal/store/store.go   # Store interface (Allocate, List, GetByPort, DeleteByID, DeleteByFilter)
 internal/store/sqlite.go  # SQLite implementation (WAL mode, modernc.org/sqlite driver)
@@ -50,14 +50,14 @@ skill/embed.go            # go:embed package exposing SKILL.md and WORKFLOW.md a
 |---------|---------|
 | Server port | `51234` (listens on `127.0.0.1`) |
 | Port range | `1–65535` |
-| DB path | `~/.port_server/ports.db` |
-| PID file | `~/.port_server/port-server.pid` |
-| Log file | `~/.port_server/port-server.log` |
-| Client env var | `PORT_SERVER_ADDR` (default `127.0.0.1:51234`) |
+| DB path | `~/.port-registry/ports.db` |
+| PID file | `~/.port-registry/port-registry.pid` |
+| Log file | `~/.port-registry/port-registry.log` |
+| Client env var | `PORT_REGISTRY_ADDR` (default `127.0.0.1:51234`) |
 
 ## Agent Skill
 
-The `skill/port-manager/` directory contains an agent skill that teaches AI agents to use `portctl` automatically when managing ports. Install with:
+The `skill/port-registry/` directory contains an agent skill that teaches AI agents to use `portctl` automatically when managing ports. Install with:
 
 ```bash
 portctl skill install            # installs to project-local .claude/

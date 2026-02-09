@@ -1,9 +1,9 @@
 version: 2
 
 builds:
-  - id: port-server
+  - id: port-registry
     main: ./cmd/server
-    binary: port-server
+    binary: port-registry
     env:
       - CGO_ENABLED=0
     goos:
@@ -14,9 +14,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/nfedorov/port_server/internal/version.Version={{.Version}}
-      - -X github.com/nfedorov/port_server/internal/version.Commit={{.Commit}}
-      - -X github.com/nfedorov/port_server/internal/version.Date={{.Date}}
+      - -X github.com/n3r/port-registry/internal/version.Version={{.Version}}
+      - -X github.com/n3r/port-registry/internal/version.Commit={{.Commit}}
+      - -X github.com/n3r/port-registry/internal/version.Date={{.Date}}
 
   - id: portctl
     main: ./cmd/portctl
@@ -31,14 +31,14 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/nfedorov/port_server/internal/version.Version={{.Version}}
-      - -X github.com/nfedorov/port_server/internal/version.Commit={{.Commit}}
-      - -X github.com/nfedorov/port_server/internal/version.Date={{.Date}}
+      - -X github.com/n3r/port-registry/internal/version.Version={{.Version}}
+      - -X github.com/n3r/port-registry/internal/version.Commit={{.Commit}}
+      - -X github.com/n3r/port-registry/internal/version.Date={{.Date}}
 
 archives:
   - id: default
     builds:
-      - port-server
+      - port-registry
       - portctl
     format: tar.gz
     name_template: "port-registry_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
@@ -64,7 +64,7 @@ brews:
     description: "Local port registry to prevent Docker port conflicts"
     license: MIT
     install: |
-      bin.install "port-server"
+      bin.install "port-registry"
       bin.install "portctl"
     test: |
       system bin/"portctl", "version"

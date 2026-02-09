@@ -13,13 +13,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nfedorov/port_server/internal/client"
-	"github.com/nfedorov/port_server/internal/config"
-	"github.com/nfedorov/port_server/internal/model"
-	"github.com/nfedorov/port_server/internal/skill"
-	"github.com/nfedorov/port_server/internal/store"
-	"github.com/nfedorov/port_server/internal/ui"
-	"github.com/nfedorov/port_server/internal/version"
+	"github.com/n3r/port-registry/internal/client"
+	"github.com/n3r/port-registry/internal/config"
+	"github.com/n3r/port-registry/internal/model"
+	"github.com/n3r/port-registry/internal/skill"
+	"github.com/n3r/port-registry/internal/store"
+	"github.com/n3r/port-registry/internal/ui"
+	"github.com/n3r/port-registry/internal/version"
 )
 
 const (
@@ -57,7 +57,7 @@ func main() {
 		return
 	}
 
-	addr := os.Getenv("PORT_SERVER_ADDR")
+	addr := os.Getenv("PORT_REGISTRY_ADDR")
 	if addr == "" {
 		addr = fmt.Sprintf("127.0.0.1:%d", config.DefaultServerPort)
 	}
@@ -85,10 +85,10 @@ func usage() {
 	fmt.Fprintln(os.Stderr, ui.UsageTitle("Usage: portctl <command> [flags]"))
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, ui.UsageHeader("Server lifecycle:"))
-	fmt.Fprintln(os.Stderr, ui.UsageCommand("start", "Start the port-server daemon"))
-	fmt.Fprintln(os.Stderr, ui.UsageCommand("stop", "Stop the port-server daemon"))
-	fmt.Fprintln(os.Stderr, ui.UsageCommand("restart", "Restart the port-server daemon"))
-	fmt.Fprintln(os.Stderr, ui.UsageCommand("status", "Show port-server daemon status"))
+	fmt.Fprintln(os.Stderr, ui.UsageCommand("start", "Start the port-registry daemon"))
+	fmt.Fprintln(os.Stderr, ui.UsageCommand("stop", "Stop the port-registry daemon"))
+	fmt.Fprintln(os.Stderr, ui.UsageCommand("restart", "Restart the port-registry daemon"))
+	fmt.Fprintln(os.Stderr, ui.UsageCommand("status", "Show port-registry daemon status"))
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, ui.UsageHeader("Commands:"))
 	fmt.Fprintln(os.Stderr, ui.UsageCommand("allocate", "Allocate a port"))
@@ -339,15 +339,15 @@ func cmdStart() {
 		os.Remove(config.DefaultPIDPath())
 	}
 
-	// Find the port-server binary next to this executable.
+	// Find the port-registry binary next to this executable.
 	exe, err := os.Executable()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, ui.Errorf("cannot determine executable path: %v", err))
 		os.Exit(1)
 	}
-	serverBin := filepath.Join(filepath.Dir(exe), "port-server")
+	serverBin := filepath.Join(filepath.Dir(exe), "port-registry")
 	if _, err := os.Stat(serverBin); err != nil {
-		fmt.Fprintln(os.Stderr, ui.Errorf("port-server binary not found at %s", serverBin))
+		fmt.Fprintln(os.Stderr, ui.Errorf("port-registry binary not found at %s", serverBin))
 		os.Exit(1)
 	}
 
@@ -370,7 +370,7 @@ func cmdStart() {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	if err := cmd.Start(); err != nil {
 		logFile.Close()
-		fmt.Fprintln(os.Stderr, ui.Errorf("failed to start port-server: %v", err))
+		fmt.Fprintln(os.Stderr, ui.Errorf("failed to start port-registry: %v", err))
 		os.Exit(1)
 	}
 	logFile.Close()
@@ -422,7 +422,7 @@ func cmdStop() {
 		os.Exit(1)
 	}
 	if err := proc.Signal(syscall.SIGTERM); err != nil {
-		fmt.Fprintln(os.Stderr, ui.Errorf("failed to stop port-server: %v", err))
+		fmt.Fprintln(os.Stderr, ui.Errorf("failed to stop port-registry: %v", err))
 		os.Exit(1)
 	}
 
@@ -437,7 +437,7 @@ func cmdStop() {
 		}
 	}
 
-	fmt.Fprintln(os.Stderr, ui.Errorf("port-server %s did not stop within 5 seconds", ui.Subtle(fmt.Sprintf("(pid %d)", pid))))
+	fmt.Fprintln(os.Stderr, ui.Errorf("port-registry %s did not stop within 5 seconds", ui.Subtle(fmt.Sprintf("(pid %d)", pid))))
 	os.Exit(1)
 }
 

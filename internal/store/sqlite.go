@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/nfedorov/port_server/internal/model"
+	"github.com/n3r/port-registry/internal/model"
 	_ "modernc.org/sqlite"
 )
 

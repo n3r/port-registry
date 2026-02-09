@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/nfedorov/port_server/internal/config"
-	"github.com/nfedorov/port_server/internal/model"
-	"github.com/nfedorov/port_server/internal/store"
+	"github.com/n3r/port-registry/internal/config"
+	"github.com/n3r/port-registry/internal/model"
+	"github.com/n3r/port-registry/internal/store"
 )
 
 type Handler struct {

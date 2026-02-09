@@ -16,7 +16,7 @@ func DefaultDBPath() string {
 	if err != nil {
 		home = "."
 	}
-	return filepath.Join(home, ".port_server", "ports.db")
+	return filepath.Join(home, ".port-registry", "ports.db")
 }
 
 func DefaultPIDPath() string {
@@ -24,7 +24,7 @@ func DefaultPIDPath() string {
 	if err != nil {
 		home = "."
 	}
-	return filepath.Join(home, ".port_server", "port-server.pid")
+	return filepath.Join(home, ".port-registry", "port-registry.pid")
 }
 
 func DefaultLogPath() string {
@@ -32,5 +32,5 @@ func DefaultLogPath() string {
 	if err != nil {
 		home = "."
 	}
-	return filepath.Join(home, ".port_server", "port-server.log")
+	return filepath.Join(home, ".port-registry", "port-registry.log")
 }
