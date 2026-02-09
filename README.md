@@ -28,8 +28,9 @@ When you run multiple projects locally — each with their own Docker Compose st
 # Build both binaries
 make build
 
-# Start the server (background it however you like)
-./bin/port-server &
+# Start the server
+./bin/portctl start
+# → port-server started (pid 12345)
 
 # Allocate a port for your service
 ./bin/portctl allocate --app myapp --instance dev --service postgres
@@ -57,6 +58,52 @@ make build
 ## CLI reference
 
 The CLI binary is `portctl`. Set `PORT_SERVER_ADDR` to override the default server address (`127.0.0.1:51234`).
+
+### `portctl start`
+
+Start the port-server daemon in the background.
+
+```
+portctl start
+```
+
+Locates the `port-server` binary next to the `portctl` executable, starts it as a detached process, and waits for the health check to pass. Logs are written to `~/.port_server/port-server.log`.
+
+**Exit codes:** `0` started successfully, `1` already running or startup failed
+
+### `portctl stop`
+
+Stop the running port-server daemon.
+
+```
+portctl stop
+```
+
+Reads the PID file, sends SIGTERM, and waits up to 5 seconds for the process to exit.
+
+**Exit codes:** `0` stopped successfully, `1` not running or failed to stop
+
+### `portctl restart`
+
+Stop and start the port-server daemon.
+
+```
+portctl restart
+```
+
+**Exit codes:** `0` restarted successfully, `1` error during stop or start
+
+### `portctl status`
+
+Show whether the port-server daemon is running.
+
+```
+portctl status
+```
+
+Reports the PID and health status. Cleans up stale PID files automatically.
+
+**Exit codes:** `0` always
 
 ### `portctl allocate`
 
@@ -294,6 +341,8 @@ At least one filter field is required.
 |---------|-----------|---------|-------------|
 | Server port | `--port` | `51234` | Port the HTTP server listens on |
 | Database path | `--db` | `~/.port_server/ports.db` | SQLite database file location |
+| PID file | `--pidfile` | `~/.port_server/port-server.pid` | PID file for the server process |
+| Log file | — | `~/.port_server/port-server.log` | Server log output (when started via `portctl start`) |
 | Server address (client) | `PORT_SERVER_ADDR` | `127.0.0.1:51234` | Address `portctl` connects to |
 | Auto-assign range | — | `3000–9999` | Port range for auto-assignment |
 

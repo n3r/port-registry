@@ -19,8 +19,8 @@ go test ./internal/handler -run TestAllocateConflict
 Layered design: **CLI (`portctl`) -> HTTP client -> server -> handler -> store interface -> SQLite**
 
 ```
-cmd/server/main.go       # HTTP server entry point (flag: -port, -db)
-cmd/portctl/main.go      # CLI client (subcommands: allocate, release, list, check, health)
+cmd/server/main.go       # HTTP server entry point (flag: -port, -db, -pidfile)
+cmd/portctl/main.go      # CLI client (subcommands: start, stop, restart, status, allocate, release, list, check, health)
 internal/config/          # Constants: DefaultServerPort=51234, port range 3000-9999
 internal/model/           # Shared types: Allocation, AllocateRequest, PortStatus, etc.
 internal/store/store.go   # Store interface (Allocate, List, GetByPort, DeleteByID, DeleteByFilter)
@@ -42,6 +42,8 @@ internal/client/          # Go HTTP client wrapping the REST API
 | Server port | `51234` (listens on `127.0.0.1`) |
 | Port range | `3000–9999` |
 | DB path | `~/.port_server/ports.db` |
+| PID file | `~/.port_server/port-server.pid` |
+| Log file | `~/.port_server/port-server.log` |
 | Client env var | `PORT_SERVER_ADDR` (default `127.0.0.1:51234`) |
 
 ## Agent Skill

@@ -4,8 +4,15 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
 	"text/tabwriter"
+	"time"
 
 	"github.com/nfedorov/port_server/internal/client"
 	"github.com/nfedorov/port_server/internal/config"
@@ -23,6 +30,19 @@ func main() {
 	switch os.Args[1] {
 	case "version", "--version", "-v":
 		fmt.Println("portctl " + version.String())
+		return
+	case "start":
+		cmdStart()
+		return
+	case "stop":
+		cmdStop()
+		return
+	case "restart":
+		cmdStop()
+		cmdStart()
+		return
+	case "status":
+		cmdStatus()
 		return
 	}
 
@@ -52,6 +72,12 @@ func main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, `Usage: portctl <command> [flags]
+
+Server lifecycle:
+  start     Start the port-server daemon
+  stop      Stop the port-server daemon
+  restart   Restart the port-server daemon
+  status    Show port-server daemon status
 
 Commands:
   allocate  Allocate a port
@@ -214,4 +240,160 @@ func cmdHealth(c *client.Client) {
 		os.Exit(1)
 	}
 	fmt.Println("ok")
+}
+
+func cmdStart() {
+	// Check if already running.
+	if pid, ok := readPID(); ok {
+		if isProcessAlive(pid) {
+			fmt.Fprintf(os.Stderr, "port-server is already running (pid %d)\n", pid)
+			os.Exit(1)
+		}
+		// Stale PID file — clean it up.
+		os.Remove(config.DefaultPIDPath())
+	}
+
+	// Find the port-server binary next to this executable.
+	exe, err := os.Executable()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: cannot determine executable path: %v\n", err)
+		os.Exit(1)
+	}
+	serverBin := filepath.Join(filepath.Dir(exe), "port-server")
+	if _, err := os.Stat(serverBin); err != nil {
+		fmt.Fprintf(os.Stderr, "error: port-server binary not found at %s\n", serverBin)
+		os.Exit(1)
+	}
+
+	// Open log file.
+	logPath := config.DefaultLogPath()
+	if err := os.MkdirAll(filepath.Dir(logPath), 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "error: cannot create log directory: %v\n", err)
+		os.Exit(1)
+	}
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: cannot open log file: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Start detached process.
+	cmd := exec.Command(serverBin)
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	if err := cmd.Start(); err != nil {
+		logFile.Close()
+		fmt.Fprintf(os.Stderr, "error: failed to start port-server: %v\n", err)
+		os.Exit(1)
+	}
+	logFile.Close()
+
+	// Wait briefly for the server to become healthy.
+	addr := fmt.Sprintf("127.0.0.1:%d", config.DefaultServerPort)
+	healthURL := "http://" + addr + "/healthz"
+	healthy := false
+	for i := 0; i < 20; i++ {
+		time.Sleep(100 * time.Millisecond)
+		resp, err := http.Get(healthURL)
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == 200 {
+				healthy = true
+				break
+			}
+		}
+	}
+
+	if !healthy {
+		fmt.Fprintf(os.Stderr, "warning: server started (pid %d) but health check not responding\n", cmd.Process.Pid)
+		fmt.Fprintf(os.Stderr, "check logs at %s\n", logPath)
+		os.Exit(1)
+	}
+
+	fmt.Printf("port-server started (pid %d)\n", cmd.Process.Pid)
+}
+
+func cmdStop() {
+	pid, ok := readPID()
+	if !ok {
+		fmt.Fprintln(os.Stderr, "port-server is not running (no PID file)")
+		os.Exit(1)
+	}
+
+	if !isProcessAlive(pid) {
+		os.Remove(config.DefaultPIDPath())
+		fmt.Fprintln(os.Stderr, "port-server is not running (stale PID file removed)")
+		os.Exit(1)
+	}
+
+	// Send SIGTERM.
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	if err := proc.Signal(syscall.SIGTERM); err != nil {
+		fmt.Fprintf(os.Stderr, "error: failed to stop port-server: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Wait for process to exit.
+	for i := 0; i < 50; i++ {
+		time.Sleep(100 * time.Millisecond)
+		if !isProcessAlive(pid) {
+			// Clean up PID file if server didn't remove it.
+			os.Remove(config.DefaultPIDPath())
+			fmt.Printf("port-server stopped (pid %d)\n", pid)
+			return
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "error: port-server (pid %d) did not stop within 5 seconds\n", pid)
+	os.Exit(1)
+}
+
+func cmdStatus() {
+	pid, ok := readPID()
+	if !ok {
+		fmt.Println("port-server is not running")
+		return
+	}
+
+	if !isProcessAlive(pid) {
+		os.Remove(config.DefaultPIDPath())
+		fmt.Println("port-server is not running (stale PID file removed)")
+		return
+	}
+
+	// Check health endpoint.
+	addr := fmt.Sprintf("127.0.0.1:%d", config.DefaultServerPort)
+	healthURL := "http://" + addr + "/healthz"
+	resp, err := http.Get(healthURL)
+	if err == nil {
+		resp.Body.Close()
+		if resp.StatusCode == 200 {
+			fmt.Printf("port-server is running (pid %d, healthy)\n", pid)
+			return
+		}
+	}
+
+	fmt.Printf("port-server is running (pid %d, not healthy)\n", pid)
+}
+
+func readPID() (int, bool) {
+	data, err := os.ReadFile(config.DefaultPIDPath())
+	if err != nil {
+		return 0, false
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		return 0, false
+	}
+	return pid, true
+}
+
+func isProcessAlive(pid int) bool {
+	err := syscall.Kill(pid, 0)
+	return err == nil
 }

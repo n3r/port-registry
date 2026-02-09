@@ -23,6 +23,7 @@ func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
 	port := flag.Int("port", config.DefaultServerPort, "server listen port")
 	dbPath := flag.String("db", config.DefaultDBPath(), "SQLite database path")
+	pidFile := flag.String("pidfile", config.DefaultPIDPath(), "PID file path")
 	flag.Parse()
 
 	if *showVersion {
@@ -55,6 +56,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen on %s: %v", srv.Addr, err)
 	}
+
+	// Write PID file.
+	if err := os.MkdirAll(filepath.Dir(*pidFile), 0755); err != nil {
+		log.Fatalf("failed to create pid directory: %v", err)
+	}
+	if err := os.WriteFile(*pidFile, []byte(fmt.Sprintf("%d", os.Getpid())), 0644); err != nil {
+		log.Fatalf("failed to write pid file: %v", err)
+	}
+	defer os.Remove(*pidFile)
 
 	go func() {
 		log.Printf("port-server listening on %s", srv.Addr)
