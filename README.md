@@ -22,10 +22,24 @@ When you run multiple projects locally — each with their own Docker Compose st
 • Auto-assign picks the first free port in 3000–9999
 ```
 
+## Installation
+
+### Homebrew
+
+```bash
+brew install n3r/tap/port-registry
+```
+
+### From source
+
+```bash
+make build    # produces bin/port-server and bin/portctl
+```
+
 ## Quick start
 
 ```bash
-# Build both binaries
+# Build both binaries (skip if installed via Homebrew)
 make build
 
 # Start the server
@@ -183,6 +197,26 @@ portctl health
 ```
 
 **Exit codes:** `0` healthy, `1` unhealthy or unreachable
+
+### `portctl version`
+
+Print the version, commit, and build date.
+
+```
+portctl version
+```
+
+### `portctl skill install`
+
+Install the port-manager agent skill to detected agent platforms.
+
+```
+portctl skill install
+```
+
+Auto-detects `~/.claude` (Claude Code), `~/.codex` (OpenAI Codex), `~/.agents` (generic agents), and project-local `.claude/` directories. Skill files are embedded in the binary — no source tree needed.
+
+**Exit codes:** `0` always
 
 ## API reference
 
@@ -365,11 +399,29 @@ port_server/
 │   │   └── handler_test.go      # Handler integration tests
 │   ├── model/
 │   │   └── model.go             # Request/response JSON structs
-│   └── store/
-│       ├── store.go             # Store interface
-│       ├── sqlite.go            # SQLite implementation (WAL, auto-migrate)
-│       └── sqlite_test.go       # Store unit tests
-├── Makefile                     # build, test, clean
+│   ├── skill/
+│   │   ├── install.go           # Agent skill installer (platform detection)
+│   │   └── install_test.go      # Install logic tests
+│   ├── store/
+│   │   ├── store.go             # Store interface
+│   │   ├── sqlite.go            # SQLite implementation (WAL, auto-migrate)
+│   │   └── sqlite_test.go       # Store unit tests
+│   ├── ui/
+│   │   ├── ui.go                # CLI output styling (lipgloss)
+│   │   └── ui_test.go           # UI helper tests
+│   └── version/
+│       └── version.go           # Version info (injected via ldflags)
+├── skill/
+│   ├── embed.go                 # go:embed for skill files
+│   └── port-manager/
+│       ├── SKILL.md             # Agent skill definition
+│       └── references/
+│           └── WORKFLOW.md      # Agent workflow reference
+├── .github/workflows/
+│   ├── ci.yml                   # CI: test + build on push/PR
+│   └── release.yml              # Release: GoReleaser on tag push
+├── .goreleaser.yml              # Cross-platform builds + Homebrew tap
+├── Makefile                     # build, test, clean, install-skill
 ├── go.mod
 └── go.sum
 ```
@@ -392,13 +444,17 @@ Tests use in-memory SQLite — no external dependencies needed.
 
 **WAL journal mode.** Enabled on every connection for better concurrent read/write performance across multiple CLI invocations.
 
-**Flat schema.** One `allocations` table with a `UNIQUE` constraint on `port`. The composite unique constraint on `(app, instance, service, port)` models the hierarchy without extra tables.
+**Flat schema.** One `allocations` table with two uniqueness constraints: `UNIQUE(port)` prevents port conflicts, and `UNIQUE(app, instance, service)` prevents duplicate service allocations. Both return `409 Conflict` with the existing holder.
 
 **Delete safety.** `DeleteByFilter` requires at least one filter criterion, preventing accidental deletion of all allocations.
 
 **Conflict reporting.** A `409 Conflict` response includes the existing holder so the caller knows who owns the port without a second request.
 
 **API versioning.** All endpoints are under `/v1/` so the API can evolve without breaking existing clients.
+
+**Embedded skill files.** Agent skill markdown files are compiled into the `portctl` binary via `go:embed`, so `portctl skill install` works without the source tree.
+
+**GoReleaser + Homebrew.** Tagged releases build cross-platform binaries (darwin/linux, amd64/arm64) and publish to a Homebrew tap automatically via GitHub Actions.
 
 ## License
 
